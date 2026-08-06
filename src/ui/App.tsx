@@ -93,10 +93,13 @@ export default function App() {
   }
 
   function deleteTransition(from: string, to: string) {
-    history.commit({
-      ...model,
-      transitions: model.transitions.filter((t) => !(t.from === from && t.to === to)),
-    });
+    const exists = model.transitions.some((t) => t.from === from && t.to === to);
+    if (exists) {
+      history.commit({
+        ...model,
+        transitions: model.transitions.filter((t) => !(t.from === from && t.to === to)),
+      });
+    }
     setSelection((sel) =>
       sel?.kind === 'transition' && sel.from === from && sel.to === to ? null : sel);
   }
@@ -118,6 +121,24 @@ export default function App() {
   function redo() {
     cancelLayoutAnim();
     history.redo();
+  }
+
+  // Canvas/Inspector edit callbacks: any edit made while auto-layout is
+  // animating must cancel the animation first, otherwise a subsequent rAF
+  // frame's history.replace() would silently clobber the edit.
+  function commitModel(m: KripkeStructure) {
+    cancelLayoutAnim();
+    history.commit(m);
+  }
+
+  function previewModel(m: KripkeStructure) {
+    cancelLayoutAnim();
+    history.replace(m);
+  }
+
+  function beginEdit() {
+    cancelLayoutAnim();
+    history.checkpoint();
   }
 
   function loadState(s: SavedState) {
@@ -172,10 +193,12 @@ export default function App() {
       if (e.key === 'Escape') setSelection(null);
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'state') {
         const id = selection.id;
-        history.commit({
-          states: model.states.filter((s) => s.id !== id),
-          transitions: model.transitions.filter((t) => t.from !== id && t.to !== id),
-        });
+        if (model.states.some((s) => s.id === id)) {
+          history.commit({
+            states: model.states.filter((s) => s.id !== id),
+            transitions: model.transitions.filter((t) => t.from !== id && t.to !== id),
+          });
+        }
         setSelection(null);
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'transition') {
@@ -224,9 +247,9 @@ export default function App() {
         <div className="pane center">
           <Canvas
             model={model}
-            onChange={history.commit}
-            onPreview={history.replace}
-            onBeginEdit={history.checkpoint}
+            onChange={commitModel}
+            onPreview={previewModel}
+            onBeginEdit={beginEdit}
             selectedStateId={selection?.kind === 'state' ? selection.id : null}
             selectedTransition={selection?.kind === 'transition'
               ? { from: selection.from, to: selection.to } : null}
@@ -240,7 +263,7 @@ export default function App() {
         <div className="pane right">
           <Inspector
             model={model}
-            onChange={history.commit}
+            onChange={commitModel}
             selection={selection}
             analysis={selection?.kind === 'formula' ? selectedAnalysis : activeAnalysis}
             selectedNodeId={selectedNodeId}

@@ -119,7 +119,7 @@ export default function Canvas(props: CanvasProps) {
 
   function onBackgroundPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
-    setCtxMenu(null);
+    if (ctxMenu) { setCtxMenu(null); return; }
     svgRef.current?.setPointerCapture?.(e.pointerId);
     drag.current = {
       type: 'pan', startX: e.clientX, startY: e.clientY,
@@ -218,12 +218,18 @@ export default function Canvas(props: CanvasProps) {
     return () => window.removeEventListener('pointerdown', onWindowPointerDown);
   }, [ctxMenu]);
 
+  // If the ctx-menu's state disappears from the model (e.g. undo removed it),
+  // drop the stale menu so a later redo can't resurrect it pointing at nothing.
+  useEffect(() => {
+    if (ctxMenu && !stateById(model, ctxMenu.stateId)) setCtxMenu(null);
+  }, [model, ctxMenu]);
+
   // Keyboard: N adds a state at the cursor, arrows nudge the selected state.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement;
       if (t instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName)) return;
-      if (e.key === 'n' || e.key === 'N') {
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const rect = svgRef.current?.getBoundingClientRect();
         const p = lastPointer.current
           ?? (rect

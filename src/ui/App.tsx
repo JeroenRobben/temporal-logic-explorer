@@ -25,6 +25,7 @@ export default function App() {
   const [model, setModel] = useState<KripkeStructure>(initial.model);
   const [formulas, setFormulas] = useState<FormulaEntry[]>(initial.formulas);
   const [selection, setSelection] = useState<Selection>(null);
+  const [activeFormulaId, setActiveFormulaId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [stepIndex, setStepIndex] = useState<number | null>(null);
   const [showEvidence, setShowEvidence] = useState(false);
@@ -44,10 +45,11 @@ export default function App() {
 
   const selectedFormulaId = selection?.kind === 'formula' ? selection.id : null;
   const selectedAnalysis = analyses.find((a) => a.entry.id === selectedFormulaId) ?? null;
+  const activeAnalysis = analyses.find((a) => a.entry.id === activeFormulaId) ?? null;
 
   const highlight: Highlight | null = useMemo(() => {
-    if (!selectedAnalysis?.record || selectedNodeId === null) return null;
-    const nr = selectedAnalysis.record.results.get(selectedNodeId);
+    if (!activeAnalysis?.record || selectedNodeId === null) return null;
+    const nr = activeAnalysis.record.results.get(selectedNodeId);
     if (!nr) return null;
     const last = nr.iterations.length - 1;
     const idx = stepIndex === null ? last : Math.min(stepIndex, last);
@@ -55,22 +57,23 @@ export default function App() {
     const prev = idx > 0 ? nr.iterations[idx - 1] : new Set<string>();
     const fresh = stepIndex === null ? new Set<string>() : new Set([...cur].filter((s) => !prev.has(s)));
     return { sat: cur, fresh, color: colorForNode(selectedNodeId) };
-  }, [selectedAnalysis, selectedNodeId, stepIndex]);
+  }, [activeAnalysis, selectedNodeId, stepIndex]);
 
   const evidence = useMemo(() => {
-    if (!showEvidence || !selectedAnalysis?.record || !selectedAnalysis.ast) return null;
-    const { record, ast } = selectedAnalysis;
+    if (!showEvidence || !activeAnalysis?.record || !activeAnalysis.ast) return null;
+    const { record, ast } = activeAnalysis;
     const rootSat = record.results.get(ast.id)!.sat;
     const initials = model.states.filter((s) => s.isInitial);
     const from = initials.find((s) => !rootSat.has(s.id)) ?? initials[0];
     return from ? findEvidence(model, record, ast, from.id) : null;
-  }, [showEvidence, selectedAnalysis, model]);
+  }, [showEvidence, activeAnalysis, model]);
 
   const deadlocks = useMemo(() => new Set(deadlockStates(model)), [model]);
 
   // Selecting a different formula or editing resets node/step sub-selection.
   function selectFormula(id: string) {
     setSelection({ kind: 'formula', id });
+    setActiveFormulaId(id);
     setSelectedNodeId(null);
     setStepIndex(null);
   }
@@ -83,6 +86,7 @@ export default function App() {
     setModel(s.model);
     setFormulas(s.formulas);
     setSelection(null);
+    setActiveFormulaId(null);
     setSelectedNodeId(null);
     setStepIndex(null);
     setShowEvidence(false);
@@ -120,12 +124,18 @@ export default function App() {
         <div className="pane left">
           <FormulaPanel
             analyses={analyses}
-            selectedFormulaId={selectedFormulaId}
+            selectedFormulaId={activeFormulaId}
             onSelect={selectFormula}
             onAdd={(text) => setFormulas((f) => [...f, { id: freshId('f'), text }])}
             onRemove={(id) => {
               setFormulas((f) => f.filter((x) => x.id !== id));
               if (selectedFormulaId === id) setSelection(null);
+              if (activeFormulaId === id) {
+                setActiveFormulaId(null);
+                setSelectedNodeId(null);
+                setStepIndex(null);
+                setShowEvidence(false);
+              }
             }}
           />
         </div>
@@ -145,13 +155,14 @@ export default function App() {
             model={model}
             onChange={setModel}
             selection={selection}
-            analysis={selectedAnalysis ?? (selection?.kind === 'state' ? analyses.find((a) => a.record) ?? null : null)}
+            analysis={selection?.kind === 'formula' ? selectedAnalysis : activeAnalysis}
             selectedNodeId={selectedNodeId}
             onSelectNode={(id) => { setSelectedNodeId(id); setStepIndex(null); }}
             stepIndex={stepIndex}
             onStepIndex={setStepIndex}
             showEvidence={showEvidence}
             onShowEvidence={setShowEvidence}
+            evidence={evidence}
           />
         </div>
       </div>

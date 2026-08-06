@@ -3,6 +3,7 @@ import { KripkeStructure, allPropositions, stateById } from '../core/kripke';
 import { CTLNode, pretty } from '../core/ctl-parser';
 import { Analysis, Selection } from './types';
 import { colorForNode } from './colors';
+import { Evidence } from '../core/evidence';
 
 export interface InspectorProps {
   model: KripkeStructure;
@@ -15,7 +16,10 @@ export interface InspectorProps {
   onStepIndex: (i: number | null) => void;
   showEvidence: boolean;
   onShowEvidence: (b: boolean) => void;
+  evidence: Evidence | null;
 }
+
+const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
 
 const GLOSS: Record<string, string> = {
   AG: 'on every path, at every step',
@@ -81,7 +85,7 @@ export default function Inspector(props: InspectorProps) {
   const {
     model, onChange, selection, analysis,
     selectedNodeId, onSelectNode, stepIndex, onStepIndex,
-    showEvidence, onShowEvidence,
+    showEvidence, onShowEvidence, evidence,
   } = props;
   const [newProp, setNewProp] = useState('');
 
@@ -121,7 +125,7 @@ export default function Inspector(props: InspectorProps) {
           onKeyDown={(e) => {
             const name = newProp.trim();
             if (e.key === 'Enter' && /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)
-              && !['true', 'false', 'A', 'E', 'U'].includes(name) && !/^[A-Z]{2}$/.test(name)) {
+              && !RESERVED_NAMES.includes(name)) {
               toggleProp(name, true);
               setNewProp('');
             }
@@ -206,6 +210,20 @@ export default function Inspector(props: InspectorProps) {
           <input type="checkbox" checked={showEvidence}
             onChange={(e) => onShowEvidence(e.target.checked)} /> show witness / counterexample
         </label>
+        {showEvidence && (
+          evidence ? (
+            <div className="muted">
+              {evidence.kind === 'witness' ? 'Witness' : 'Counterexample'} path: {
+                evidence.path.map((id) => stateById(model, id)?.name ?? id).join(' → ')
+              }{evidence.loopIndex !== undefined ? ' (loops back)' : ''}
+            </div>
+          ) : (
+            <div className="muted">
+              No evidence to show — v1 covers top-level EF, AG, EG, AF and E[· U ·] (a holding
+              A-formula or failing E-formula has no single-path evidence).
+            </div>
+          )
+        )}
         {record.deadlocks.length > 0 && (
           <>
             <div className="section-title">Warnings</div>

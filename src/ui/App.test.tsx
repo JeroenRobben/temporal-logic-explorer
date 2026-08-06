@@ -50,4 +50,18 @@ describe('App', () => {
     expect(saved.model.states.length).toBe(3);
     expect(saved.formulas.length).toBe(3);
   });
+
+  it('evidence explanation appears when evidence cannot be shown', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('AG EF r')); // holds → AG has no witness path
+    fireEvent.click(screen.getByRole('checkbox', { name: /show witness/i }));
+    expect(screen.getByText(/No evidence to show/i)).toBeTruthy();
+  });
+
+  it('evidence path text appears for a counterexample', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('AF r')); // false → lasso counterexample
+    fireEvent.click(screen.getByRole('checkbox', { name: /show witness/i }));
+    expect(screen.getByText(/Counterexample path:/i)).toBeTruthy();
+  });
 });

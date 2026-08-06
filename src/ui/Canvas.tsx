@@ -169,14 +169,18 @@ export default function Canvas(props: CanvasProps) {
   const hasReverse = (from: string, to: string) =>
     model.transitions.some((t) => t.from === to && t.to === from);
 
-  const evidencePairs: [KripkeState, KripkeState][] = [];
+  const evidencePairs: [KripkeState, KripkeState, boolean][] = [];
   if (evidence) {
     for (let i = 0; i + 1 < evidence.path.length; i++) {
       const a = stateById(model, evidence.path[i]);
       const b = stateById(model, evidence.path[i + 1]);
-      if (a && b) evidencePairs.push([a, b]);
+      const inLoop = evidence.loopIndex !== undefined && i >= evidence.loopIndex;
+      if (a && b) evidencePairs.push([a, b, inLoop]);
     }
   }
+  const loopEntryState = evidence?.loopIndex !== undefined
+    ? stateById(model, evidence.path[evidence.loopIndex])
+    : undefined;
 
   const tempFrom = tempEdge ? stateById(model, tempEdge.from) : undefined;
 
@@ -213,12 +217,16 @@ export default function Canvas(props: CanvasProps) {
             <line x1={tempFrom.x} y1={tempFrom.y} x2={tempEdge.x} y2={tempEdge.y}
               stroke="#2b6cb0" strokeWidth={2} strokeDasharray="6 4" />
           )}
-          {evidencePairs.map(([a, b], i) => (
+          {evidencePairs.map(([a, b, inLoop], i) => (
             <path key={`ev-${i}`} className="evidence-path"
               d={edgePath(a, b, a.id !== b.id && hasReverse(a.id, b.id))}
-              fill="none" stroke={EVIDENCE_COLOR} strokeWidth={4} opacity={0.85}
+              fill="none" stroke={EVIDENCE_COLOR} strokeWidth={inLoop ? 5 : 4} opacity={inLoop ? 1 : 0.85}
               markerEnd="url(#arrow-ev)" />
           ))}
+          {loopEntryState && (
+            <text x={loopEntryState.x - R - 14} y={loopEntryState.y - R - 2}
+              fontSize={16} fill={EVIDENCE_COLOR} style={{ userSelect: 'none' }}>⟲</text>
+          )}
           {model.states.map((s) => {
             const inSat = highlight?.sat.has(s.id);
             const isFresh = highlight?.fresh.has(s.id);

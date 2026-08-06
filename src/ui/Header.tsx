@@ -6,9 +6,16 @@ interface HeaderProps {
   onLoadExample: (index: number) => void;
   onImport: (s: SavedState) => void;
   exportState: () => SavedState;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onAutoLayout: () => void;
 }
 
-export default function Header({ onLoadExample, onImport, exportState }: HeaderProps) {
+export default function Header({
+  onLoadExample, onImport, exportState, onUndo, onRedo, canUndo, canRedo, onAutoLayout,
+}: HeaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   function doExport() {
@@ -41,6 +48,9 @@ export default function Header({ onLoadExample, onImport, exportState }: HeaderP
         <button className="tab" disabled title="Coming later">CTL*</button>
       </div>
       <div className="spacer" />
+      <button onClick={onUndo} disabled={!canUndo} title="Ctrl+Z">↩ Undo</button>
+      <button onClick={onRedo} disabled={!canRedo} title="Ctrl+Shift+Z / Ctrl+Y">↪ Redo</button>
+      <button onClick={onAutoLayout} title="Force-directed layout">Auto-layout</button>
       <select
         value=""
         onChange={(e) => { if (e.target.value !== '') onLoadExample(Number(e.target.value)); }}

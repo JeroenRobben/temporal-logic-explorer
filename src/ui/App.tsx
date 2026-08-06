@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { deadlockStates, KripkeStructure } from '../core/kripke';
 import { parseCTL, ParseError } from '../core/ctl-parser';
 import { checkCTL } from '../core/ctl-checker';
 import { findEvidence } from '../core/evidence';
+import { forceLayout } from '../core/layout';
 import { Analysis, FormulaEntry, Selection } from './types';
 import { colorForNode } from './colors';
 import { loadSaved, save, SavedState } from './storage';
 import { EXAMPLES } from './examples';
+import { useHistory } from './useHistory';
 import Header from './Header';
 import FormulaPanel from './FormulaPanel';
 import Canvas, { Highlight } from './Canvas';
@@ -17,18 +19,22 @@ function freshId(prefix: string): string {
   return `${prefix}${Date.now().toString(36)}-${idCounter++}`;
 }
 
+const LAYOUT_MS = 300;
+
 export default function App() {
   const [initial] = useState<SavedState>(() => loadSaved() ?? {
     model: structuredClone(EXAMPLES[0].model),
     formulas: structuredClone(EXAMPLES[0].formulas),
   });
-  const [model, setModel] = useState<KripkeStructure>(initial.model);
+  const history = useHistory<KripkeStructure>(initial.model);
+  const model = history.present;
   const [formulas, setFormulas] = useState<FormulaEntry[]>(initial.formulas);
   const [selection, setSelection] = useState<Selection>(null);
   const [activeFormulaId, setActiveFormulaId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [stepIndex, setStepIndex] = useState<number | null>(null);
   const [showEvidence, setShowEvidence] = useState(false);
+  const layoutAnim = useRef<number | null>(null);
 
   useEffect(() => { save({ model, formulas }); }, [model, formulas]);
 
@@ -87,16 +93,36 @@ export default function App() {
   }
 
   function deleteTransition(from: string, to: string) {
-    setModel((m) => ({
-      ...m,
-      transitions: m.transitions.filter((t) => !(t.from === from && t.to === to)),
-    }));
+    history.commit({
+      ...model,
+      transitions: model.transitions.filter((t) => !(t.from === from && t.to === to)),
+    });
     setSelection((sel) =>
       sel?.kind === 'transition' && sel.from === from && sel.to === to ? null : sel);
   }
 
+  // Cancels an in-flight auto-layout animation so undo/redo never race a
+  // requestAnimationFrame loop that is still writing history.replace() frames.
+  function cancelLayoutAnim() {
+    if (layoutAnim.current !== null) {
+      cancelAnimationFrame(layoutAnim.current);
+      layoutAnim.current = null;
+    }
+  }
+
+  function undo() {
+    cancelLayoutAnim();
+    history.undo();
+  }
+
+  function redo() {
+    cancelLayoutAnim();
+    history.redo();
+  }
+
   function loadState(s: SavedState) {
-    setModel(s.model);
+    cancelLayoutAnim();
+    history.reset(s.model);
     setFormulas(s.formulas);
     setSelection(null);
     setActiveFormulaId(null);
@@ -105,17 +131,51 @@ export default function App() {
     setShowEvidence(false);
   }
 
+  function autoLayout() {
+    if (model.states.length < 2) return;
+    cancelLayoutAnim();
+    const target = forceLayout(model);
+    const start = new Map(model.states.map((s) => [s.id, { x: s.x, y: s.y }]));
+    const base = model;
+    history.checkpoint();
+    const t0 = performance.now();
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - t0) / LAYOUT_MS);
+      const ease = t * (2 - t);
+      history.replace({
+        ...base,
+        states: base.states.map((s) => {
+          const a = start.get(s.id)!;
+          const b = target.get(s.id) ?? a;
+          return { ...s, x: a.x + (b.x - a.x) * ease, y: a.y + (b.y - a.y) * ease };
+        }),
+      });
+      layoutAnim.current = t < 1 ? requestAnimationFrame(frame) : null;
+    };
+    layoutAnim.current = requestAnimationFrame(frame);
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement;
       if (t instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName)) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+      }
       if (e.key === 'Escape') setSelection(null);
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'state') {
         const id = selection.id;
-        setModel((m) => ({
-          states: m.states.filter((s) => s.id !== id),
-          transitions: m.transitions.filter((t) => t.from !== id && t.to !== id),
-        }));
+        history.commit({
+          states: model.states.filter((s) => s.id !== id),
+          transitions: model.transitions.filter((t) => t.from !== id && t.to !== id),
+        });
         setSelection(null);
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'transition') {
@@ -124,7 +184,8 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection, model, history]);
 
   return (
     <>
@@ -135,6 +196,11 @@ export default function App() {
         })}
         onImport={loadState}
         exportState={() => ({ model, formulas })}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onAutoLayout={autoLayout}
       />
       <div className="main">
         <div className="pane left">
@@ -158,9 +224,9 @@ export default function App() {
         <div className="pane center">
           <Canvas
             model={model}
-            onChange={setModel}
-            onPreview={setModel}
-            onBeginEdit={() => {}}
+            onChange={history.commit}
+            onPreview={history.replace}
+            onBeginEdit={history.checkpoint}
             selectedStateId={selection?.kind === 'state' ? selection.id : null}
             selectedTransition={selection?.kind === 'transition'
               ? { from: selection.from, to: selection.to } : null}
@@ -174,7 +240,7 @@ export default function App() {
         <div className="pane right">
           <Inspector
             model={model}
-            onChange={setModel}
+            onChange={history.commit}
             selection={selection}
             analysis={selection?.kind === 'formula' ? selectedAnalysis : activeAnalysis}
             selectedNodeId={selectedNodeId}

@@ -2,6 +2,8 @@ import { KripkeStructure } from './kripke';
 
 export interface Point { x: number; y: number; }
 
+const GRAVITY = 0.15;
+
 /**
  * Deterministic Fruchterman–Reingold force layout.
  * Seeds from current positions (coincident states get a deterministic nudge),
@@ -52,6 +54,14 @@ export function forceLayout(model: KripkeStructure, iterations = 150, k = 120): 
       const da = disp.get(t.from)!, db = disp.get(t.to)!;
       da.x -= dx * f; da.y -= dy * f;
       db.x += dx * f; db.y += dy * f;
+    }
+    const gx = [...pos.values()].reduce((a, p) => a + p.x, 0) / n;
+    const gy = [...pos.values()].reduce((a, p) => a + p.y, 0) / n;
+    for (const s of states) {
+      const p = pos.get(s.id)!;
+      const dp = disp.get(s.id)!;
+      dp.x += (gx - p.x) * GRAVITY;
+      dp.y += (gy - p.y) * GRAVITY;
     }
     for (const s of states) {
       const dp = disp.get(s.id)!;

@@ -51,4 +51,15 @@ describe('forceLayout', () => {
     const r = forceLayout(mk([['a', 0, 0], ['b', 40, 0]], [['a', 'a'], ['a', 'b']]));
     for (const p of r.values()) expect(Number.isFinite(p.x)).toBe(true);
   });
+  it('keeps isolated states near the connected component', () => {
+    const m = mk(
+      [['a', 0, 0], ['b', 120, 0], ['c', 60, 100], ['lone', 30, 30]],
+      [['a', 'b'], ['b', 'c'], ['c', 'a']],
+    );
+    const r = forceLayout(m);
+    const cx = ([...r.values()].reduce((s, p) => s + p.x, 0)) / 4;
+    const cy = ([...r.values()].reduce((s, p) => s + p.y, 0)) / 4;
+    const lone = r.get('lone')!;
+    expect(Math.hypot(lone.x - cx, lone.y - cy)).toBeLessThan(500);
+  });
 });

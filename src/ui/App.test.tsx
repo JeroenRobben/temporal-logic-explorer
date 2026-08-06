@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, createEvent } from '@testing-library/react';
+import { render, screen, fireEvent, createEvent, act } from '@testing-library/react';
 import App from './App';
 
 // jsdom has no PointerEvent constructor, so fireEvent.pointerDown/Up build a
@@ -114,5 +114,32 @@ describe('App', () => {
     expect(document.querySelectorAll('g[style] circle[r="28"]').length).toBe(before + 1);
     fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
     expect(document.querySelectorAll('g[style] circle[r="28"]').length).toBe(before);
+  });
+
+  it('deleting a state mid-auto-layout is not clobbered by animation frames', () => {
+    const frames: FrameRequestCallback[] = [];
+    const origRaf = window.requestAnimationFrame;
+    const origCaf = window.cancelAnimationFrame;
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) => { frames.push(cb); return frames.length; }) as typeof window.requestAnimationFrame;
+    window.cancelAnimationFrame = ((id: number) => { frames[id - 1] = () => {}; }) as typeof window.cancelAnimationFrame;
+    try {
+      render(<App />);
+      // select 'work' BEFORE starting the animation, since after one animation
+      // frame its coordinates may have moved and a click-select could miss it.
+      const svg = document.querySelector('svg')!;
+      firePointer('pointerDown', screen.getByText('work'), { clientX: 160, clientY: 140 });
+      firePointer('pointerUp', svg, { clientX: 160, clientY: 140 });
+      fireEvent.click(screen.getByText('Auto-layout'));
+      // pump one frame so the animation is genuinely running
+      act(() => { frames.splice(0).forEach((cb) => cb(performance.now())); });
+      fireEvent.keyDown(document.body, { key: 'Delete' });
+      expect(screen.queryByText('work')).toBeNull();
+      // pump any residual frames — the deletion must survive
+      act(() => { frames.splice(0).forEach((cb) => cb(performance.now())); });
+      expect(screen.queryByText('work')).toBeNull();
+    } finally {
+      window.requestAnimationFrame = origRaf;
+      window.cancelAnimationFrame = origCaf;
+    }
   });
 });

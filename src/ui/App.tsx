@@ -92,18 +92,6 @@ export default function App() {
     setSelection(t ? { kind: 'transition', from: t.from, to: t.to } : null);
   }
 
-  function deleteTransition(from: string, to: string) {
-    const exists = model.transitions.some((t) => t.from === from && t.to === to);
-    if (exists) {
-      history.commit({
-        ...model,
-        transitions: model.transitions.filter((t) => !(t.from === from && t.to === to)),
-      });
-    }
-    setSelection((sel) =>
-      sel?.kind === 'transition' && sel.from === from && sel.to === to ? null : sel);
-  }
-
   // Cancels an in-flight auto-layout animation so undo/redo never race a
   // requestAnimationFrame loop that is still writing history.replace() frames.
   function cancelLayoutAnim() {
@@ -113,19 +101,11 @@ export default function App() {
     }
   }
 
-  function undo() {
-    cancelLayoutAnim();
-    history.undo();
-  }
-
-  function redo() {
-    cancelLayoutAnim();
-    history.redo();
-  }
-
   // Canvas/Inspector edit callbacks: any edit made while auto-layout is
   // animating must cancel the animation first, otherwise a subsequent rAF
-  // frame's history.replace() would silently clobber the edit.
+  // frame's history.replace() would silently clobber the edit. ALL App-internal
+  // commits (deleteTransition, Delete/Backspace handler) must also route
+  // through commitModel for the same reason.
   function commitModel(m: KripkeStructure) {
     cancelLayoutAnim();
     history.commit(m);
@@ -139,6 +119,28 @@ export default function App() {
   function beginEdit() {
     cancelLayoutAnim();
     history.checkpoint();
+  }
+
+  function undo() {
+    cancelLayoutAnim();
+    history.undo();
+  }
+
+  function redo() {
+    cancelLayoutAnim();
+    history.redo();
+  }
+
+  function deleteTransition(from: string, to: string) {
+    const exists = model.transitions.some((t) => t.from === from && t.to === to);
+    if (exists) {
+      commitModel({
+        ...model,
+        transitions: model.transitions.filter((t) => !(t.from === from && t.to === to)),
+      });
+    }
+    setSelection((sel) =>
+      sel?.kind === 'transition' && sel.from === from && sel.to === to ? null : sel);
   }
 
   function loadState(s: SavedState) {
@@ -194,7 +196,7 @@ export default function App() {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'state') {
         const id = selection.id;
         if (model.states.some((s) => s.id === id)) {
-          history.commit({
+          commitModel({
             states: model.states.filter((s) => s.id !== id),
             transitions: model.transitions.filter((t) => t.from !== id && t.to !== id),
           });

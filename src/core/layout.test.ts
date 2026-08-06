@@ -51,7 +51,7 @@ describe('forceLayout', () => {
     const r = forceLayout(mk([['a', 0, 0], ['b', 40, 0]], [['a', 'a'], ['a', 'b']]));
     for (const p of r.values()) expect(Number.isFinite(p.x)).toBe(true);
   });
-  it('keeps isolated states near the connected component', () => {
+  it('keeps isolated states within the layout radius bound', () => {
     const m = mk(
       [['a', 0, 0], ['b', 120, 0], ['c', 60, 100], ['lone', 30, 30]],
       [['a', 'b'], ['b', 'c'], ['c', 'a']],
@@ -59,7 +59,19 @@ describe('forceLayout', () => {
     const r = forceLayout(m);
     const cx = ([...r.values()].reduce((s, p) => s + p.x, 0)) / 4;
     const cy = ([...r.values()].reduce((s, p) => s + p.y, 0)) / 4;
-    const lone = r.get('lone')!;
-    expect(Math.hypot(lone.x - cx, lone.y - cy)).toBeLessThan(500);
+    const bound = 120 * (1 + Math.sqrt(4)) + 1;
+    for (const p of r.values()) expect(Math.hypot(p.x - cx, p.y - cy)).toBeLessThan(bound);
+  });
+  it('bounds spread even with many isolated states', () => {
+    const m = mk(
+      [['a', 0, 0], ['b', 120, 0], ['c', 60, 100],
+       ['l1', 10, 10], ['l2', 20, 20], ['l3', 30, 30], ['l4', 40, 40], ['l5', 50, 50]],
+      [['a', 'b'], ['b', 'c'], ['c', 'a']],
+    );
+    const r = forceLayout(m);
+    const cx = ([...r.values()].reduce((s, p) => s + p.x, 0)) / 8;
+    const cy = ([...r.values()].reduce((s, p) => s + p.y, 0)) / 8;
+    const bound = 120 * (1 + Math.sqrt(8)) + 1;
+    for (const p of r.values()) expect(Math.hypot(p.x - cx, p.y - cy)).toBeLessThan(bound);
   });
 });

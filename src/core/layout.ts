@@ -70,6 +70,14 @@ export function forceLayout(model: KripkeStructure, iterations = 150, k = 120): 
       const p = pos.get(s.id)!;
       pos.set(s.id, { x: p.x + (dp.x / d) * step, y: p.y + (dp.y / d) * step });
     }
+    const R_MAX = k * (1 + Math.sqrt(n)); // repulsion-independent hard bound on spread
+    const ccx = [...pos.values()].reduce((a, p) => a + p.x, 0) / n;
+    const ccy = [...pos.values()].reduce((a, p) => a + p.y, 0) / n;
+    for (const [id, p] of pos) {
+      const dx = p.x - ccx, dy = p.y - ccy;
+      const d = Math.hypot(dx, dy);
+      if (d > R_MAX) pos.set(id, { x: ccx + (dx / d) * R_MAX, y: ccy + (dy / d) * R_MAX });
+    }
     temp = Math.max(1, temp * 0.95);
   }
 

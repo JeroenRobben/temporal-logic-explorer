@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent, type WheelEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { KripkeStructure, KripkeState, stateById } from '../core/kripke';
 import { Evidence } from '../core/evidence';
 import { EVIDENCE_COLOR } from './colors';
@@ -80,6 +80,7 @@ export default function Canvas(props: CanvasProps) {
     } else {
       drag.current = { type: 'move', stateId: s.id, offX: p.x - s.x, offY: p.y - s.y, moved: false };
     }
+    svgRef.current?.setPointerCapture(e.pointerId);
   }
 
   function onBackgroundPointerDown(e: PointerEvent) {
@@ -87,6 +88,7 @@ export default function Canvas(props: CanvasProps) {
       type: 'pan', startX: e.clientX, startY: e.clientY,
       origTx: view.tx, origTy: view.ty, moved: false,
     };
+    svgRef.current?.setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -111,6 +113,7 @@ export default function Canvas(props: CanvasProps) {
   }
 
   function onPointerUp(e: PointerEvent) {
+    if (svgRef.current?.hasPointerCapture(e.pointerId)) svgRef.current.releasePointerCapture(e.pointerId);
     const d = drag.current;
     drag.current = null;
     setTempEdge(null);
@@ -129,17 +132,29 @@ export default function Canvas(props: CanvasProps) {
     }
   }
 
-  function onWheel(e: WheelEvent) {
-    const factor = Math.exp(-e.deltaY * 0.001);
-    setView((v) => {
-      const scale = Math.min(3, Math.max(0.3, v.scale * factor));
-      const r = svgRef.current!.getBoundingClientRect();
-      const cx = e.clientX - r.left, cy = e.clientY - r.top;
-      // keep the point under the cursor fixed while zooming
-      const wx = (cx - v.tx) / v.scale, wy = (cy - v.ty) / v.scale;
-      return { scale, tx: cx - wx * scale, ty: cy - wy * scale };
-    });
+  function onPointerCancel() {
+    drag.current = null;
+    setTempEdge(null);
   }
+
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const h = (e: globalThis.WheelEvent) => {
+      e.preventDefault();
+      const factor = Math.exp(-e.deltaY * 0.001);
+      setView((v) => {
+        const scale = Math.min(3, Math.max(0.3, v.scale * factor));
+        const r = el.getBoundingClientRect();
+        const cx = e.clientX - r.left, cy = e.clientY - r.top;
+        // keep the point under the cursor fixed while zooming
+        const wx = (cx - v.tx) / v.scale, wy = (cy - v.ty) / v.scale;
+        return { scale, tx: cx - wx * scale, ty: cy - wy * scale };
+      });
+    };
+    el.addEventListener('wheel', h, { passive: false });
+    return () => el.removeEventListener('wheel', h);
+  }, []);
 
   function rename(s: KripkeState) {
     const name = window.prompt('State name', s.name);
@@ -172,7 +187,7 @@ export default function Canvas(props: CanvasProps) {
         onPointerDown={onBackgroundPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onWheel={onWheel}
+        onPointerCancel={onPointerCancel}
       >
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"

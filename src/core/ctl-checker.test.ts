@@ -60,6 +60,14 @@ describe('checkCTL', () => {
   it('AU', () => {
     expect(sat(k, 'A[true U q]').sat).toEqual(['s1', 's2']);
   });
+  it('iff', () => {
+    expect(sat(k, 'p <-> q').sat).toEqual(['s1']);
+  });
+  it('EG records shrinking iterations', () => {
+    const { root, record } = sat(k, 'EG !q');
+    const iters = record.results.get(root.id)!.iterations.map((s) => [...s].sort());
+    expect(iters).toEqual([['s0', 's1'], ['s0']]);
+  });
   it('verdict is over initial states', () => {
     expect(sat(k, 'EF q').record.verdict).toBe(true);
     expect(sat(k, 'AF q').record.verdict).toBe(false);

@@ -29,4 +29,14 @@ describe('kripke helpers', () => {
   it('allPropositions collects unique props', () => {
     expect(allPropositions(k).sort()).toEqual(['p', 'q']);
   });
+  it('allPropositions deduplicates across states', () => {
+    const kDup: KripkeStructure = {
+      states: [
+        { id: 's0', name: 's0', propositions: ['p', 'q'], isInitial: true, x: 0, y: 0 },
+        { id: 's1', name: 's1', propositions: ['q', 'r'], isInitial: false, x: 0, y: 0 },
+      ],
+      transitions: [{ from: 's0', to: 's1' }],
+    };
+    expect(allPropositions(kDup).sort()).toEqual(['p', 'q', 'r']);
+  });
 });

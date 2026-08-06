@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { KripkeStructure } from '../core/kripke';
+import { deadlockStates, KripkeStructure } from '../core/kripke';
 import { parseCTL, ParseError } from '../core/ctl-parser';
 import { checkCTL } from '../core/ctl-checker';
 import { findEvidence } from '../core/evidence';
@@ -18,8 +18,12 @@ function freshId(prefix: string): string {
 }
 
 export default function App() {
-  const [model, setModel] = useState<KripkeStructure>(() => loadSaved()?.model ?? EXAMPLES[0].model);
-  const [formulas, setFormulas] = useState<FormulaEntry[]>(() => loadSaved()?.formulas ?? EXAMPLES[0].formulas);
+  const [initial] = useState<SavedState>(() => loadSaved() ?? {
+    model: structuredClone(EXAMPLES[0].model),
+    formulas: structuredClone(EXAMPLES[0].formulas),
+  });
+  const [model, setModel] = useState<KripkeStructure>(initial.model);
+  const [formulas, setFormulas] = useState<FormulaEntry[]>(initial.formulas);
   const [selection, setSelection] = useState<Selection>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [stepIndex, setStepIndex] = useState<number | null>(null);
@@ -62,6 +66,8 @@ export default function App() {
     return from ? findEvidence(model, record, ast, from.id) : null;
   }, [showEvidence, selectedAnalysis, model]);
 
+  const deadlocks = useMemo(() => new Set(deadlockStates(model)), [model]);
+
   // Selecting a different formula or editing resets node/step sub-selection.
   function selectFormula(id: string) {
     setSelection({ kind: 'formula', id });
@@ -84,7 +90,8 @@ export default function App() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement) return;
+      const t = e.target as HTMLElement;
+      if (t instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName)) return;
       if (e.key === 'Escape') setSelection(null);
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'state') {
         const id = selection.id;
@@ -130,7 +137,7 @@ export default function App() {
             onSelectState={selectState}
             highlight={highlight}
             evidence={evidence}
-            deadlocks={new Set(analyses[0]?.record?.deadlocks ?? [])}
+            deadlocks={deadlocks}
           />
         </div>
         <div className="pane right">

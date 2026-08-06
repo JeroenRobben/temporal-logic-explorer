@@ -67,6 +67,12 @@ describe('parseCTL', () => {
   it('rejects trailing garbage', () => {
     expect(() => parseCTL('p q')).toThrow(ParseError);
   });
+  it('rejects overly deep nesting with ParseError', () => {
+    expect(() => parseCTL('!'.repeat(10000) + 'p')).toThrow(ParseError);
+  });
+  it('parses nested until', () => {
+    expect(kinds(parseCTL('E[E[p U q] U r]'))).toBe('EU(EU(p,q),r)');
+  });
   it('gives an LTL hint for bare path operators', () => {
     try {
       parseCTL('FG p');

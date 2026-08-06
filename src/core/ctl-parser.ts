@@ -1,3 +1,10 @@
+/**
+ * `id` is a unique integer assigned during a single `parseCTL()` call
+ * (nodes within that call's resulting tree get distinct ids). It is
+ * NOT globally unique: separate `parseCTL()` calls restart id
+ * assignment from 0, so ids must never be compared across trees
+ * produced by different `parseCTL()` invocations.
+ */
 export type CTLNode =
   | { id: number; kind: 'true' | 'false' }
   | { id: number; kind: 'prop'; name: string }
@@ -55,9 +62,12 @@ function lex(input: string): Token[] {
 const UNARY_TEMPORAL = new Set(['AX', 'EX', 'AF', 'EF', 'AG', 'EG']);
 const LTL_PATH_OP = /^[FGXU]+$/;
 
+const MAX_DEPTH = 500;
+
 class Parser {
   private i = 0;
   private nextId = 0;
+  private depth = 0;
   constructor(private tokens: Token[]) {}
 
   private peek(offset = 0): Token {
@@ -120,35 +130,43 @@ class Parser {
   }
 
   private parseUnary(): CTLNode {
-    const t = this.peek();
-    if (t.kind === 'not') {
-      this.next();
-      return this.node({ kind: 'not', child: this.parseUnary() });
+    this.depth++;
+    if (this.depth > MAX_DEPTH) {
+      throw new ParseError('Formula is too deeply nested', this.peek().pos);
     }
-    if (t.kind === 'ident') {
-      if (UNARY_TEMPORAL.has(t.text)) {
+    try {
+      const t = this.peek();
+      if (t.kind === 'not') {
         this.next();
-        const kind = t.text as 'AX' | 'EX' | 'AF' | 'EF' | 'AG' | 'EG';
-        return this.node({ kind, child: this.parseUnary() });
+        return this.node({ kind: 'not', child: this.parseUnary() });
       }
-      if ((t.text === 'A' || t.text === 'E') && this.peek(1).kind === 'lbracket') {
-        this.next(); this.next(); // A/E, [
-        const left = this.parseIff();
-        const u = this.expect('ident', "'U'");
-        if (u.text !== 'U') throw new ParseError(`Expected 'U', got '${u.text}'`, u.pos);
-        const right = this.parseIff();
-        this.expect('rbracket', "']'");
-        return this.node({ kind: t.text === 'A' ? 'AU' : 'EU', left, right });
+      if (t.kind === 'ident') {
+        if (UNARY_TEMPORAL.has(t.text)) {
+          this.next();
+          const kind = t.text as 'AX' | 'EX' | 'AF' | 'EF' | 'AG' | 'EG';
+          return this.node({ kind, child: this.parseUnary() });
+        }
+        if ((t.text === 'A' || t.text === 'E') && this.peek(1).kind === 'lbracket') {
+          this.next(); this.next(); // A/E, [
+          const left = this.parseIff();
+          const u = this.expect('ident', "'U'");
+          if (u.text !== 'U') throw new ParseError(`Expected 'U', got '${u.text}'`, u.pos);
+          const right = this.parseIff();
+          this.expect('rbracket', "']'");
+          return this.node({ kind: t.text === 'A' ? 'AU' : 'EU', left, right });
+        }
+        if (LTL_PATH_OP.test(t.text) && this.startsFormula(this.peek(1))) {
+          throw new ParseError(
+            `'${t.text}' is a path formula — in CTL every temporal operator needs a path quantifier`,
+            t.pos,
+            "Pair each of F/G/X with a path quantifier (A or E), e.g. AF AG p instead of FG p.",
+          );
+        }
       }
-      if (LTL_PATH_OP.test(t.text) && this.startsFormula(this.peek(1))) {
-        throw new ParseError(
-          `'${t.text}' is a path formula — in CTL every temporal operator needs a path quantifier`,
-          t.pos,
-          "Pair each of F/G/X with a path quantifier (A or E), e.g. AF AG p instead of FG p.",
-        );
-      }
+      return this.parseAtom();
+    } finally {
+      this.depth--;
     }
-    return this.parseAtom();
   }
 
   private parseAtom(): CTLNode {

@@ -98,6 +98,7 @@ export default function Canvas(props: CanvasProps) {
   }
 
   function onStatePointerDown(e: PointerEvent, s: KripkeState) {
+    if (editing?.stateId === s.id) return;
     if (e.button !== 0) return;
     e.stopPropagation();
     setCtxMenu(null);
@@ -204,6 +205,18 @@ export default function Canvas(props: CanvasProps) {
     el.addEventListener('wheel', h, { passive: false });
     return () => el.removeEventListener('wheel', h);
   }, []);
+
+  // Close the proposition context menu on any pointerdown outside the canvas container.
+  useEffect(() => {
+    if (!ctxMenu) return;
+    function onWindowPointerDown(e: globalThis.PointerEvent) {
+      if (containerRef.current && e.target instanceof Node && !containerRef.current.contains(e.target)) {
+        setCtxMenu(null);
+      }
+    }
+    window.addEventListener('pointerdown', onWindowPointerDown);
+    return () => window.removeEventListener('pointerdown', onWindowPointerDown);
+  }, [ctxMenu]);
 
   // Keyboard: N adds a state at the cursor, arrows nudge the selected state.
   useEffect(() => {

@@ -1,6 +1,23 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, createEvent } from '@testing-library/react';
 import App from './App';
+
+// jsdom has no PointerEvent constructor, so fireEvent.pointerDown/Up build a
+// plain Event whose eventInit (button, clientX, clientY...) is silently
+// dropped — every `if (e.button !== 0) return;` guard in Canvas then bails
+// because e.button is undefined. Build the event via createEvent and patch
+// on the properties the handlers read so pointer interactions actually fire.
+function firePointer(
+  kind: 'pointerDown' | 'pointerUp',
+  el: Element,
+  init: { clientX?: number; clientY?: number } = {},
+) {
+  const evt = createEvent[kind](el, init);
+  Object.defineProperty(evt, 'button', { value: 0, configurable: true });
+  Object.defineProperty(evt, 'clientX', { value: init.clientX ?? 0, configurable: true });
+  Object.defineProperty(evt, 'clientY', { value: init.clientY ?? 0, configurable: true });
+  fireEvent(el, evt);
+}
 
 describe('App', () => {
   beforeEach(() => localStorage.clear());
@@ -63,5 +80,39 @@ describe('App', () => {
     fireEvent.click(screen.getByText('AF r')); // false → lasso counterexample
     fireEvent.click(screen.getByRole('checkbox', { name: /show witness/i }));
     expect(screen.getByText(/Counterexample path:/i)).toBeTruthy();
+  });
+
+  it('deleting a selected state is undoable via Ctrl+Z', () => {
+    render(<App />);
+    // select state 'work' (at 160,140 in the default example): pointerdown on its
+    // group + pointerup on the svg without movement = click-select
+    const svg = document.querySelector('svg')!;
+    firePointer('pointerDown', screen.getByText('work'), { clientX: 160, clientY: 140 });
+    firePointer('pointerUp', svg, { clientX: 160, clientY: 140 });
+    fireEvent.keyDown(document.body, { key: 'Delete' });
+    expect(screen.queryByText('work')).toBeNull();
+    fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+    expect(screen.getByText('work')).toBeTruthy();
+  });
+
+  it('clicking a transition selects it and Delete removes it', () => {
+    render(<App />);
+    const before = document.querySelectorAll('.edge-hit').length;
+    expect(before).toBe(4); // reset example has 4 transitions
+    firePointer('pointerDown', document.querySelectorAll('.edge-hit')[1]);
+    expect(screen.getByText('Transition')).toBeTruthy();
+    fireEvent.keyDown(document.body, { key: 'Delete' });
+    expect(document.querySelectorAll('.edge-hit').length).toBe(3);
+    fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+    expect(document.querySelectorAll('.edge-hit').length).toBe(4);
+  });
+
+  it('N adds a state (undoable)', () => {
+    render(<App />);
+    const before = document.querySelectorAll('g[style] circle[r="28"]').length;
+    fireEvent.keyDown(document.body, { key: 'n' });
+    expect(document.querySelectorAll('g[style] circle[r="28"]').length).toBe(before + 1);
+    fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+    expect(document.querySelectorAll('g[style] circle[r="28"]').length).toBe(before);
   });
 });

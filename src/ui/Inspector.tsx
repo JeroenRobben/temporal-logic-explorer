@@ -17,9 +17,10 @@ export interface InspectorProps {
   showEvidence: boolean;
   onShowEvidence: (b: boolean) => void;
   evidence: Evidence | null;
+  onDeleteTransition: (from: string, to: string) => void;
 }
 
-const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
+export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
 
 const GLOSS: Record<string, string> = {
   AG: 'on every path, at every step',
@@ -85,9 +86,26 @@ export default function Inspector(props: InspectorProps) {
   const {
     model, onChange, selection, analysis,
     selectedNodeId, onSelectNode, stepIndex, onStepIndex,
-    showEvidence, onShowEvidence, evidence,
+    showEvidence, onShowEvidence, evidence, onDeleteTransition,
   } = props;
   const [newProp, setNewProp] = useState('');
+
+  if (selection?.kind === 'transition') {
+    const a = stateById(model, selection.from);
+    const b = stateById(model, selection.to);
+    return (
+      <div>
+        <div className="section-title">Transition</div>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+          {a?.name ?? selection.from} → {b?.name ?? selection.to}
+        </div>
+        <button onClick={() => onDeleteTransition(selection.from, selection.to)}>
+          Delete transition
+        </button>
+        <div className="muted" style={{ marginTop: 6 }}>…or press Delete.</div>
+      </div>
+    );
+  }
 
   if (selection?.kind === 'state') {
     const s = stateById(model, selection.id);

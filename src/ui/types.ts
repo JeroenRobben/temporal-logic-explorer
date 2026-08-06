@@ -16,4 +16,5 @@ export interface Analysis {
 export type Selection =
   | { kind: 'state'; id: string }
   | { kind: 'formula'; id: string }
+  | { kind: 'transition'; from: string; to: string }
   | null;

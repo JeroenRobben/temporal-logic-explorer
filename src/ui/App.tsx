@@ -82,6 +82,19 @@ export default function App() {
     setSelection(id === null ? null : { kind: 'state', id });
   }
 
+  function selectTransition(t: { from: string; to: string } | null) {
+    setSelection(t ? { kind: 'transition', from: t.from, to: t.to } : null);
+  }
+
+  function deleteTransition(from: string, to: string) {
+    setModel((m) => ({
+      ...m,
+      transitions: m.transitions.filter((t) => !(t.from === from && t.to === to)),
+    }));
+    setSelection((sel) =>
+      sel?.kind === 'transition' && sel.from === from && sel.to === to ? null : sel);
+  }
+
   function loadState(s: SavedState) {
     setModel(s.model);
     setFormulas(s.formulas);
@@ -104,6 +117,9 @@ export default function App() {
           transitions: m.transitions.filter((t) => t.from !== id && t.to !== id),
         }));
         setSelection(null);
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'transition') {
+        deleteTransition(selection.from, selection.to);
       }
     }
     window.addEventListener('keydown', onKey);
@@ -143,8 +159,13 @@ export default function App() {
           <Canvas
             model={model}
             onChange={setModel}
+            onPreview={setModel}
+            onBeginEdit={() => {}}
             selectedStateId={selection?.kind === 'state' ? selection.id : null}
+            selectedTransition={selection?.kind === 'transition'
+              ? { from: selection.from, to: selection.to } : null}
             onSelectState={selectState}
+            onSelectTransition={selectTransition}
             highlight={highlight}
             evidence={evidence}
             deadlocks={deadlocks}
@@ -163,6 +184,7 @@ export default function App() {
             showEvidence={showEvidence}
             onShowEvidence={setShowEvidence}
             evidence={evidence}
+            onDeleteTransition={deleteTransition}
           />
         </div>
       </div>

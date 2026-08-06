@@ -13,9 +13,9 @@ export function commit<T>(h: History<T>, next: T, cap = 100): History<T> {
   return { past: [...h.past, h.present].slice(-cap), present: next, future: [] };
 }
 
-/** Update present WITHOUT creating an undo entry (transient drag frames). */
+/** Update present WITHOUT creating an undo entry (transient drag frames). Clears the redo future — a transient edit invalidates redo just like a committed one. */
 export function replace<T>(h: History<T>, next: T): History<T> {
-  return { ...h, present: next };
+  return { past: h.past, present: next, future: [] };
 }
 
 /** Push the current present as an undo point; subsequent replace() calls all

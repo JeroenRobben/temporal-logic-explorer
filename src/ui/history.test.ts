@@ -52,4 +52,12 @@ describe('history', () => {
     expect(h.past.length).toBe(100);
     expect(h.past[0]).toBe(50);
   });
+  it('replace clears the redo future (undo → replace → redo is a no-op)', () => {
+    let h = init(1);
+    h = commit(h, 2);
+    h = undo(h);
+    h = replace(h, 7);
+    expect(h.present).toBe(7);
+    expect(redo(h).present).toBe(7); // stale future was discarded
+  });
 });

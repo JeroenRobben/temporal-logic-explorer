@@ -62,6 +62,7 @@ export function findEvidence(
 ): Evidence | null {
   const succ: Succ = new Map(k.states.map((s) => [s.id, successors(k, s.id)]));
   const all = k.states.map((s) => s.id);
+  // record comes from checkCTL(k, root), which populates results for every node of root — the assertion is safe.
   const satOf = (n: CTLNode) => record.results.get(n.id)!.sat;
   const compl = (S: Set<string>) => new Set(all.filter((x) => !S.has(x)));
   const holds = satOf(root).has(from);

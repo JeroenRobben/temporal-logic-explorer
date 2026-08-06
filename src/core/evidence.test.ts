@@ -61,7 +61,41 @@ describe('findEvidence', () => {
   });
   it('returns null when there is nothing to show', () => {
     expect(evidenceFor('EF q', 's2')?.path).toEqual(['s2']); // trivial witness
-    expect(evidenceFor('AG EF q')).toBe(null); // holds; nested — unsupported
+    expect(evidenceFor('AG EF q')).toBe(null); // AG holds — this API only shows AG counterexamples, not witnesses
     expect(evidenceFor('p & q')).toBe(null); // non-temporal root
+  });
+  it('EG witness handles a lasso with a stem and multi-state cycle', () => {
+    const k2: KripkeStructure = {
+      states: [
+        { id: 's0', name: 's0', propositions: ['p'], isInitial: true, x: 0, y: 0 },
+        { id: 's1', name: 's1', propositions: ['p'], isInitial: false, x: 0, y: 0 },
+        { id: 's2', name: 's2', propositions: ['p'], isInitial: false, x: 0, y: 0 },
+      ],
+      transitions: [
+        { from: 's0', to: 's1' }, { from: 's1', to: 's2' }, { from: 's2', to: 's1' },
+      ],
+    };
+    const root = parseCTL('EG p');
+    const e = findEvidence(k2, checkCTL(k2, root), root, 's0')!;
+    expect(e.path).toEqual(['s0', 's1', 's2', 's1']);
+    expect(e.loopIndex).toBe(1);
+  });
+  it('EU witness respects the φ-restriction on intermediate states', () => {
+    const k3: KripkeStructure = {
+      states: [
+        { id: 'a', name: 'a', propositions: ['p'], isInitial: true, x: 0, y: 0 },
+        { id: 'b', name: 'b', propositions: [], isInitial: false, x: 0, y: 0 },
+        { id: 'c1', name: 'c1', propositions: ['p'], isInitial: false, x: 0, y: 0 },
+        { id: 'c2', name: 'c2', propositions: ['p'], isInitial: false, x: 0, y: 0 },
+        { id: 'd', name: 'd', propositions: ['q'], isInitial: false, x: 0, y: 0 },
+      ],
+      transitions: [
+        { from: 'a', to: 'b' }, { from: 'b', to: 'd' },
+        { from: 'a', to: 'c1' }, { from: 'c1', to: 'c2' }, { from: 'c2', to: 'd' },
+      ],
+    };
+    const root = parseCTL('E[p U q]');
+    const e = findEvidence(k3, checkCTL(k3, root), root, 'a')!;
+    expect(e.path).toEqual(['a', 'c1', 'c2', 'd']); // must NOT shortcut through non-p state b
   });
 });

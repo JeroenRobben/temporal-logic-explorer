@@ -13,7 +13,7 @@ export function loadSaved(): SavedState | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return validateSavedState(parsed) ? parsed : null;
+    return validateSavedState(parsed) ? normalizeSavedState(parsed) : null;
   } catch {
     return null;
   }
@@ -25,6 +25,18 @@ export function save(state: SavedState): void {
   } catch {
     // storage full/unavailable — persistence is best-effort
   }
+}
+
+/** Drop duplicate transitions (same from/to); keeps first occurrence. */
+export function normalizeSavedState(s: SavedState): SavedState {
+  const seen = new Set<string>();
+  const transitions = s.model.transitions.filter((t) => {
+    const key = `${t.from}->${t.to}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return { ...s, model: { ...s.model, transitions } };
 }
 
 export function validateSavedState(x: unknown): x is SavedState {

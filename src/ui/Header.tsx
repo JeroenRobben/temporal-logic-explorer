@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { EXAMPLES } from './examples';
-import { SavedState, validateSavedState } from './storage';
+import { SavedState, validateSavedState, normalizeSavedState } from './storage';
 
 interface HeaderProps {
   onLoadExample: (index: number) => void;
@@ -25,7 +25,7 @@ export default function Header({ onLoadExample, onImport, exportState }: HeaderP
       try {
         const parsed = JSON.parse(text);
         if (!validateSavedState(parsed)) throw new Error('not a valid model file');
-        onImport(parsed);
+        onImport(normalizeSavedState(parsed));
       } catch (e) {
         alert(`Import failed: ${e instanceof Error ? e.message : 'invalid JSON'}`);
       }

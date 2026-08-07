@@ -41,6 +41,12 @@ export default function FormulaPanel({
           const cls = a.verdict === true ? 'true'
             : a.verdict === false ? 'false' : 'none';
           const text = a.ast ? prettyCTL(a.ast) : a.ltlAst ? prettyLTL(a.ltlAst) : a.entry.text;
+          const ap = a.entry.logic === 'ltl' && !a.error ? a.allPaths : undefined;
+          const apMark = !ap ? null
+            : ap.kind === 'holds' ? { text: '∀✓', cls: 'true', title: 'holds on all infinite paths' }
+            : ap.kind === 'fails' ? { text: '∀✗', cls: 'false', title: 'fails on some path — counterexample available' }
+            : ap.kind === 'too-large' ? { text: '∀⚠', cls: 'none', title: 'automaton too large — simplify the formula' }
+            : { text: '∀–', cls: 'none', title: 'no initial states' };
           return (
             <div
               key={a.entry.id}
@@ -50,7 +56,8 @@ export default function FormulaPanel({
                 ? 'Build a trace to evaluate LTL formulas' : undefined}
             >
               <span className={`badge ${a.entry.logic}`}>{a.entry.logic.toUpperCase()}</span>
-              <span className={`verdict ${cls}`}>{verdict}</span>
+              <span className={`verdict ${cls}`} title={a.entry.logic === 'ltl' ? 'on the current trace' : undefined}>{verdict}</span>
+              {apMark && <span className={`verdict ${apMark.cls}`} title={apMark.title}>{apMark.text}</span>}
               <span className="text">{text}</span>
               <button
                 className="remove"

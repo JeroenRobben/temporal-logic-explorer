@@ -1,6 +1,7 @@
 import { CTLNode, ParseError } from '../core/ctl-parser';
 import { LTLNode } from '../core/ltl-parser';
 import { EvaluationRecord } from '../core/ctl-checker';
+import { AllPathsResult } from '../core/ltl-allpaths';
 
 export type Logic = 'ctl' | 'ltl';
 
@@ -23,6 +24,7 @@ export interface Analysis {
   error?: ParseError;
   record?: EvaluationRecord;         // CTL only
   ltlRows?: Map<number, boolean[]>;  // LTL only; absent without a complete trace
+  allPaths?: AllPathsResult;         // LTL only
   /** Unified row verdict: CTL = over initial states; LTL = position 0; null = unknown. */
   verdict: boolean | null;
 }

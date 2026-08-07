@@ -5,6 +5,7 @@ import { LTLNode, pretty as prettyLTL } from '../core/ltl-parser';
 import { Analysis, Selection } from './types';
 import { colorForNode } from './colors';
 import { Evidence } from '../core/evidence';
+import { Lasso } from '../core/trace';
 
 export interface InspectorProps {
   model: KripkeStructure;
@@ -19,6 +20,7 @@ export interface InspectorProps {
   onShowEvidence: (b: boolean) => void;
   evidence: Evidence | null;
   onDeleteTransition: (from: string, to: string) => void;
+  onLoadCounterexample: (l: Lasso) => void;
 }
 
 export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
@@ -137,6 +139,7 @@ export default function Inspector(props: InspectorProps) {
     model, onChange, selection, analysis,
     selectedNodeId, onSelectNode, stepIndex, onStepIndex,
     showEvidence, onShowEvidence, evidence, onDeleteTransition,
+    onLoadCounterexample,
   } = props;
   const [newProp, setNewProp] = useState('');
 
@@ -230,7 +233,7 @@ export default function Inspector(props: InspectorProps) {
       );
     }
     if (analysis.entry.logic === 'ltl' && analysis.ltlAst) {
-      const { ltlAst, ltlRows } = analysis;
+      const { ltlAst, ltlRows, allPaths } = analysis;
       const selectedLTLNode = selectedNodeId !== null
         ? (function find(n: LTLNode): LTLNode | undefined {
             if (n.id === selectedNodeId) return n;
@@ -247,6 +250,37 @@ export default function Inspector(props: InspectorProps) {
           {ltlRows
             ? <div className="muted">{ltlRows.get(ltlAst.id)![0] ? '✓ holds' : '✗ fails'} on the current trace</div>
             : <div className="muted">No trace — build one (⏺ in the timeline) to evaluate.</div>}
+          <div className="section-title">All paths (Büchi)</div>
+          {(() => {
+            const ap = allPaths;
+            if (!ap) return <div className="muted">–</div>;
+            switch (ap.kind) {
+              case 'holds':
+                return <>
+                  <div className="muted">∀✓ holds on all infinite paths</div>
+                  <div className="muted">
+                    automaton ¬φ: {ap.automaton.states.length} states
+                    ({ap.automaton.states.filter((q) => q.accepting).length} accepting)
+                    · product: {ap.product.states.length} states
+                  </div>
+                </>;
+              case 'fails':
+                return <>
+                  <div className="muted">∀✗ fails — a path violates the formula</div>
+                  <button onClick={() => onLoadCounterexample(ap.counterexample)}>
+                    Load counterexample as trace
+                  </button>
+                  <div className="muted" style={{ marginTop: 4 }}>
+                    automaton ¬φ: {ap.automaton.states.length} states
+                    · product: {ap.product.states.length} states
+                  </div>
+                </>;
+              case 'too-large':
+                return <div className="hint">⚠ automaton exceeds 500 states — simplify the formula.</div>;
+              case 'no-initial':
+                return <div className="muted">No initial states — mark one to check all paths.</div>;
+            }
+          })()}
         </div>
       );
     }

@@ -4,7 +4,8 @@ import { parseCTL, ParseError } from '../core/ctl-parser';
 import { checkCTL } from '../core/ctl-checker';
 import { parseLTL } from '../core/ltl-parser';
 import { checkLTL } from '../core/ltl-checker';
-import { validateLasso, validatePrefix } from '../core/trace';
+import { Lasso, validateLasso, validatePrefix } from '../core/trace';
+import { checkLTLAllPaths } from '../core/ltl-allpaths';
 import { findEvidence } from '../core/evidence';
 import { forceLayout } from '../core/layout';
 import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
@@ -66,6 +67,12 @@ export default function App() {
     }
   }
 
+  function loadCounterexample(l: Lasso) {
+    setTraceNotice(null);
+    setRecording(false);
+    setTrace({ stateIds: l.stateIds, loopIndex: l.loopIndex });
+  }
+
   function startRecording(on: boolean) {
     setTraceNotice(null);
     if (on && (trace === null || trace.loopIndex !== null)) {
@@ -100,8 +107,9 @@ export default function App() {
         if (entry.logic === 'ltl') {
           const ltlAst = parseLTL(entry.text);
           const ltlRows = completeLasso ? checkLTL(model, completeLasso, ltlAst) : undefined;
+          const allPaths = checkLTLAllPaths(model, ltlAst);
           return {
-            entry, ltlAst, ltlRows,
+            entry, ltlAst, ltlRows, allPaths,
             verdict: ltlRows ? ltlRows.get(ltlAst.id)![0] : null,
           };
         }
@@ -357,6 +365,7 @@ export default function App() {
             onShowEvidence={setShowEvidence}
             evidence={evidence}
             onDeleteTransition={deleteTransition}
+            onLoadCounterexample={loadCounterexample}
           />
         </div>
       </div>

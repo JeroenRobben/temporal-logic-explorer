@@ -16,6 +16,7 @@ import Header from './Header';
 import FormulaPanel from './FormulaPanel';
 import Canvas, { Highlight } from './Canvas';
 import Inspector from './Inspector';
+import Timeline from './Timeline';
 
 let idCounter = 0;
 function freshId(prefix: string): string {
@@ -116,6 +117,9 @@ export default function App() {
   const selectedFormulaId = selection?.kind === 'formula' ? selection.id : null;
   const selectedAnalysis = analyses.find((a) => a.entry.id === selectedFormulaId) ?? null;
   const activeAnalysis = analyses.find((a) => a.entry.id === activeFormulaId) ?? null;
+
+  const activeLTLAnalysis = activeAnalysis && activeAnalysis.entry.logic === 'ltl' && activeAnalysis.ltlAst
+    ? activeAnalysis : null;
 
   const highlight: Highlight | null = useMemo(() => {
     if (!activeAnalysis?.record || selectedNodeId === null) return null;
@@ -319,7 +323,6 @@ export default function App() {
           />
         </div>
         <div className="pane center" onMouseLeave={() => setHoverStateId(null)}>
-          {traceNotice && <div className="muted" style={{ padding: '4px 10px' }}>{traceNotice}</div>}
           <Canvas
             model={model}
             onChange={commitModel}
@@ -357,6 +360,21 @@ export default function App() {
           />
         </div>
       </div>
+      {(trace !== null || activeLTLAnalysis !== null || traceNotice !== null) && (
+        <Timeline
+          model={model}
+          trace={trace}
+          onTraceChange={setTrace}
+          recording={recording}
+          onRecordingChange={startRecording}
+          analysis={activeLTLAnalysis}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={(id) => { setSelectedNodeId(id); setStepIndex(null); }}
+          onHoverState={setHoverStateId}
+          notice={traceNotice}
+          onDismissNotice={() => setTraceNotice(null)}
+        />
+      )}
     </>
   );
 }

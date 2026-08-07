@@ -25,25 +25,25 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText('Temporal Logic Explorer')).toBeTruthy();
     expect(screen.getByText('AG EF r')).toBeTruthy(); // formula row (pretty-printed)
-    expect(screen.getByPlaceholderText(/add formula/i)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/add .*formula/i)).toBeTruthy();
   });
 
   it('shows verdicts for the default example formulas', () => {
     render(<App />);
-    // Reset example: AG EF r ✓, AF r ✗, AG (w → EX true) ✓
+    // Reset example: AG EF r ✓, AF r ✗, AG (w → EX true) ✓, G F r – (no trace yet)
     const rows = document.querySelectorAll('.formula-row');
-    expect(rows.length).toBe(3);
+    expect(rows.length).toBe(4);
     const verdicts = [...rows].map((r) => r.querySelector('.verdict')!.textContent);
-    expect(verdicts).toEqual(['✓', '✗', '✓']);
+    expect(verdicts).toEqual(['✓', '✗', '✓', '–']);
   });
 
   it('adding an LTL-style formula shows a parse-error row and hint in inspector', () => {
     render(<App />);
-    const input = screen.getByPlaceholderText(/add formula/i);
+    const input = screen.getByPlaceholderText(/add .*formula/i);
     fireEvent.change(input, { target: { value: 'FG w' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     const rows = document.querySelectorAll('.formula-row');
-    expect(rows.length).toBe(4);
+    expect(rows.length).toBe(5);
     const last = rows[rows.length - 1];
     expect(last.querySelector('.verdict')!.textContent).toBe('⚠');
     fireEvent.click(last);
@@ -65,7 +65,7 @@ describe('App', () => {
     render(<App />);
     const saved = JSON.parse(localStorage.getItem('temporal-logic-explorer-v1')!);
     expect(saved.model.states.length).toBe(3);
-    expect(saved.formulas.length).toBe(3);
+    expect(saved.formulas.length).toBe(4);
   });
 
   it('evidence explanation appears when evidence cannot be shown', () => {

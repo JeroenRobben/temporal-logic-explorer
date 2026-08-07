@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { deadlockStates, KripkeStructure } from '../core/kripke';
 import { parseCTL, ParseError } from '../core/ctl-parser';
 import { checkCTL } from '../core/ctl-checker';
+import { parseLTL } from '../core/ltl-parser';
+import { checkLTL } from '../core/ltl-checker';
+import { validateLasso } from '../core/trace';
 import { findEvidence } from '../core/evidence';
 import { forceLayout } from '../core/layout';
-import { Analysis, FormulaEntry, Selection } from './types';
+import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
 import { colorForNode } from './colors';
 import { loadSaved, save, SavedState } from './storage';
 import { EXAMPLES } from './examples';
@@ -25,6 +28,7 @@ export default function App() {
   const [initial] = useState<SavedState>(() => loadSaved() ?? {
     model: structuredClone(EXAMPLES[0].model),
     formulas: structuredClone(EXAMPLES[0].formulas),
+    trace: null,
   });
   const history = useHistory<KripkeStructure>(initial.model);
   const model = history.present;
@@ -34,20 +38,37 @@ export default function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [stepIndex, setStepIndex] = useState<number | null>(null);
   const [showEvidence, setShowEvidence] = useState(false);
+  const [entryLogic, setEntryLogic] = useState<Logic>('ctl');
+  const [trace, setTrace] = useState<PendingLasso | null>(initial.trace ?? null);
   const layoutAnim = useRef<number | null>(null);
 
-  useEffect(() => { save({ model, formulas }); }, [model, formulas]);
+  useEffect(() => { save({ model, formulas, trace }); }, [model, formulas, trace]);
+
+  const completeLasso = useMemo(() => {
+    if (!trace || trace.loopIndex === null) return null;
+    const lasso = { stateIds: trace.stateIds, loopIndex: trace.loopIndex };
+    return validateLasso(model, lasso) === null ? lasso : null;
+  }, [trace, model]);
 
   const analyses: Analysis[] = useMemo(() =>
     formulas.map((entry) => {
       try {
+        if (entry.logic === 'ltl') {
+          const ltlAst = parseLTL(entry.text);
+          const ltlRows = completeLasso ? checkLTL(model, completeLasso, ltlAst) : undefined;
+          return {
+            entry, ltlAst, ltlRows,
+            verdict: ltlRows ? ltlRows.get(ltlAst.id)![0] : null,
+          };
+        }
         const ast = parseCTL(entry.text);
-        return { entry, ast, record: checkCTL(model, ast) };
+        const record = checkCTL(model, ast);
+        return { entry, ast, record, verdict: record.verdict };
       } catch (e) {
-        if (e instanceof ParseError) return { entry, error: e };
+        if (e instanceof ParseError) return { entry, error: e, verdict: null };
         throw e;
       }
-    }), [formulas, model]);
+    }), [formulas, model, completeLasso]);
 
   const selectedFormulaId = selection?.kind === 'formula' ? selection.id : null;
   const selectedAnalysis = analyses.find((a) => a.entry.id === selectedFormulaId) ?? null;
@@ -147,6 +168,7 @@ export default function App() {
     cancelLayoutAnim();
     history.reset(s.model);
     setFormulas(s.formulas);
+    setTrace(s.trace ?? null);
     setSelection(null);
     setActiveFormulaId(null);
     setSelectedNodeId(null);
@@ -218,14 +240,17 @@ export default function App() {
         onLoadExample={(i) => loadState({
           model: structuredClone(EXAMPLES[i].model),
           formulas: structuredClone(EXAMPLES[i].formulas),
+          trace: null,
         })}
         onImport={loadState}
-        exportState={() => ({ model, formulas })}
+        exportState={() => ({ model, formulas, trace })}
         onUndo={undo}
         onRedo={redo}
         canUndo={history.canUndo}
         canRedo={history.canRedo}
         onAutoLayout={autoLayout}
+        entryLogic={entryLogic}
+        onEntryLogic={setEntryLogic}
       />
       <div className="main">
         <div className="pane left">
@@ -233,7 +258,8 @@ export default function App() {
             analyses={analyses}
             selectedFormulaId={activeFormulaId}
             onSelect={selectFormula}
-            onAdd={(text) => setFormulas((f) => [...f, { id: freshId('f'), text }])}
+            onAdd={(text) => setFormulas((f) => [...f, { id: freshId('f'), text, logic: entryLogic }])}
+            entryLogic={entryLogic}
             onRemove={(id) => {
               setFormulas((f) => f.filter((x) => x.id !== id));
               if (selectedFormulaId === id) setSelection(null);

@@ -1,11 +1,12 @@
 import { KripkeStructure } from '../core/kripke';
-import { FormulaEntry } from './types';
+import { FormulaEntry, PendingLasso } from './types';
 
 const KEY = 'temporal-logic-explorer-v1';
 
 export interface SavedState {
   model: KripkeStructure;
   formulas: FormulaEntry[];
+  trace?: PendingLasso | null;
 }
 
 export function loadSaved(): SavedState | null {
@@ -13,7 +14,12 @@ export function loadSaved(): SavedState | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return validateSavedState(parsed) ? normalizeSavedState(parsed) : null;
+    if (!validateSavedState(parsed)) return null;
+    const normalized = normalizeSavedState(parsed);
+    return {
+      ...normalized,
+      formulas: normalized.formulas.map((f) => ({ ...f, logic: f.logic ?? 'ctl' })),
+    };
   } catch {
     return null;
   }
@@ -58,8 +64,17 @@ export function validateSavedState(x: unknown): x is SavedState {
       && stateIds.has(tr.from) && stateIds.has(tr.to);
   })) return false;
   if (!Array.isArray(o.formulas)) return false;
-  return (o.formulas as unknown[]).every((f) => {
+  if (!(o.formulas as unknown[]).every((f) => {
     const fe = f as Record<string, unknown>;
-    return typeof fe.id === 'string' && typeof fe.text === 'string';
-  });
+    return typeof fe.id === 'string' && typeof fe.text === 'string'
+      && (fe.logic === undefined || fe.logic === 'ctl' || fe.logic === 'ltl');
+  })) return false;
+  if (o.trace !== undefined && o.trace !== null) {
+    const tr = o.trace as Record<string, unknown>;
+    if (!Array.isArray(tr.stateIds) || !tr.stateIds.every((s: unknown) => typeof s === 'string')) return false;
+    if (tr.loopIndex !== null && (typeof tr.loopIndex !== 'number'
+      || !Number.isInteger(tr.loopIndex) || tr.loopIndex < 0
+      || tr.loopIndex >= tr.stateIds.length)) return false;
+  }
+  return true;
 }

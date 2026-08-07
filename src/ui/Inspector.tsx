@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KripkeStructure, allPropositions, stateById } from '../core/kripke';
 import { CTLNode, pretty } from '../core/ctl-parser';
+import { LTLNode, pretty as prettyLTL } from '../core/ltl-parser';
 import { Analysis, Selection } from './types';
 import { colorForNode } from './colors';
 import { Evidence } from '../core/evidence';
@@ -20,7 +21,7 @@ export interface InspectorProps {
   onDeleteTransition: (from: string, to: string) => void;
 }
 
-export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
+export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
 
 const GLOSS: Record<string, string> = {
   AG: 'on every path, at every step',
@@ -34,6 +35,10 @@ const GLOSS: Record<string, string> = {
   and: 'both hold', or: 'at least one holds', not: 'does not hold',
   implies: 'if the left holds, so does the right', iff: 'both or neither',
   prop: 'atomic proposition', true: 'holds everywhere', false: 'holds nowhere',
+  X: 'in the next step',
+  F: 'eventually',
+  G: 'at every step from here on',
+  U: 'the left holds until the right does',
 };
 
 function childrenOf(n: CTLNode): CTLNode[] {
@@ -76,6 +81,51 @@ function NodeTree(props: {
       </div>
       {childrenOf(node).map((c) => (
         <NodeTree key={c.id} node={c} depth={depth + 1}
+          selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+      ))}
+    </div>
+  );
+}
+
+function childrenOfLTL(n: LTLNode): LTLNode[] {
+  if ('child' in n) return [n.child];
+  if ('left' in n) return [n.left, n.right];
+  return [];
+}
+
+function labelOfLTL(n: LTLNode): string {
+  switch (n.kind) {
+    case 'prop': return n.name;
+    case 'true': case 'false': return n.kind;
+    case 'not': return '¬';
+    case 'and': return '∧';
+    case 'or': return '∨';
+    case 'implies': return '→';
+    case 'iff': return '↔';
+    case 'U': return '· U ·';
+    default: return n.kind;
+  }
+}
+
+function LTLNodeTree(props: {
+  node: LTLNode; depth: number;
+  selectedNodeId: number | null; onSelectNode: (id: number) => void;
+}) {
+  const { node, depth, selectedNodeId, onSelectNode } = props;
+  return (
+    <div>
+      <div
+        className={`node-row ${node.id === selectedNodeId ? 'selected' : ''}`}
+        style={{ marginLeft: depth * 14 }}
+        onClick={() => onSelectNode(node.id)}
+        title={GLOSS[node.kind]}
+      >
+        <span className="swatch" style={{ background: colorForNode(node.id) }} />
+        <span>{labelOfLTL(node)}</span>
+        <span className="muted">{prettyLTL(node)}</span>
+      </div>
+      {childrenOfLTL(node).map((c) => (
+        <LTLNodeTree key={c.id} node={c} depth={depth + 1}
           selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
       ))}
     </div>
@@ -176,6 +226,27 @@ export default function Inspector(props: InspectorProps) {
             {analysis.error.message} (at position {analysis.error.pos})
           </div>
           {analysis.error.hint && <div className="hint">💡 {analysis.error.hint}</div>}
+        </div>
+      );
+    }
+    if (analysis.entry.logic === 'ltl' && analysis.ltlAst) {
+      const { ltlAst, ltlRows } = analysis;
+      const selectedLTLNode = selectedNodeId !== null
+        ? (function find(n: LTLNode): LTLNode | undefined {
+            if (n.id === selectedNodeId) return n;
+            for (const c of childrenOfLTL(n)) { const r = find(c); if (r) return r; }
+          })(ltlAst)
+        : undefined;
+      return (
+        <div>
+          <div className="section-title">Subformulas — rows in the timeline</div>
+          <LTLNodeTree node={ltlAst} depth={0} selectedNodeId={selectedNodeId}
+            onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          {selectedLTLNode && <div className="gloss">{GLOSS[selectedLTLNode.kind]}</div>}
+          <div className="section-title">Verdict (trace position 0)</div>
+          {ltlRows
+            ? <div className="muted">{ltlRows.get(ltlAst.id)![0] ? '✓ holds' : '✗ fails'} on the current trace</div>
+            : <div className="muted">No trace — build one (⏺ in the timeline) to evaluate.</div>}
         </div>
       );
     }

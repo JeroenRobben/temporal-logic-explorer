@@ -22,9 +22,10 @@ export const EXAMPLES: Example[] = [
       ],
     },
     formulas: [
-      { id: 'f1', text: 'AG EF r' }, // true: reset is reachable from everywhere
-      { id: 'f2', text: 'AF r' }, // false: work can self-loop forever
-      { id: 'f3', text: 'AG (w -> EX true)' }, // true: work states have successors
+      { id: 'f1', text: 'AG EF r', logic: 'ctl' }, // true: reset is reachable from everywhere
+      { id: 'f2', text: 'AF r', logic: 'ctl' }, // false: work can self-loop forever
+      { id: 'f3', text: 'AG (w -> EX true)', logic: 'ctl' }, // true: work states have successors
+      { id: 'f4', text: 'G F r', logic: 'ltl' }, // '–' until you build a trace; true iff reset is in the loop
     ],
   },
   {
@@ -41,9 +42,9 @@ export const EXAMPLES: Example[] = [
       ],
     },
     formulas: [
-      { id: 'f1', text: 'AG !(c1 & c2)' }, // true: never both critical
-      { id: 'f2', text: 'AG EF c1' }, // true: crit1 stays reachable
-      { id: 'f3', text: 'E[!c2 U c1]' }, // true: some path keeps ¬c2 until c1
+      { id: 'f1', text: 'AG !(c1 & c2)', logic: 'ctl' }, // true: never both critical
+      { id: 'f2', text: 'AG EF c1', logic: 'ctl' }, // true: crit1 stays reachable
+      { id: 'f3', text: 'E[!c2 U c1]', logic: 'ctl' }, // true: some path keeps ¬c2 until c1
     ],
   },
   {
@@ -58,8 +59,8 @@ export const EXAMPLES: Example[] = [
       ],
     },
     formulas: [
-      { id: 'f1', text: 'AG EF p' }, // false: 'stuck' cannot reach p
-      { id: 'f2', text: 'AX false' }, // false at 'alive' (has successors); vacuously true at 'stuck'
+      { id: 'f1', text: 'AG EF p', logic: 'ctl' }, // false: 'stuck' cannot reach p
+      { id: 'f2', text: 'AX false', logic: 'ctl' }, // false at 'alive' (has successors); vacuously true at 'stuck'
     ],
   },
 ];

@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { EXAMPLES } from './examples';
 import { SavedState, validateSavedState, normalizeSavedState } from './storage';
+import { Logic } from './types';
 
 interface HeaderProps {
   onLoadExample: (index: number) => void;
@@ -11,10 +12,13 @@ interface HeaderProps {
   canUndo: boolean;
   canRedo: boolean;
   onAutoLayout: () => void;
+  entryLogic: Logic;
+  onEntryLogic: (l: Logic) => void;
 }
 
 export default function Header({
   onLoadExample, onImport, exportState, onUndo, onRedo, canUndo, canRedo, onAutoLayout,
+  entryLogic, onEntryLogic,
 }: HeaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -43,8 +47,10 @@ export default function Header({
     <div className="header">
       <h1>Temporal Logic Explorer</h1>
       <div className="tabs">
-        <button className="tab" disabled title="Coming later">LTL</button>
-        <button className="tab active">CTL</button>
+        <button className={`tab ${entryLogic === 'ltl' ? 'active' : ''}`}
+          onClick={() => onEntryLogic('ltl')} title="New formulas are LTL (evaluated on the trace)">LTL</button>
+        <button className={`tab ${entryLogic === 'ctl' ? 'active' : ''}`}
+          onClick={() => onEntryLogic('ctl')} title="New formulas are CTL (evaluated on the structure)">CTL</button>
         <button className="tab" disabled title="Coming later">CTL*</button>
       </div>
       <div className="spacer" />

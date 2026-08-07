@@ -9,7 +9,7 @@ const good: SavedState = {
     ],
     transitions: [{ from: 'a', to: 'b' }, { from: 'a', to: 'b' }, { from: 'b', to: 'b' }],
   },
-  formulas: [{ id: 'f1', text: 'EF p' }],
+  formulas: [{ id: 'f1', text: 'EF p', logic: 'ctl' }],
 };
 
 describe('storage', () => {

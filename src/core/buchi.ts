@@ -86,8 +86,8 @@ export function prettyNNF(n: NNF): string {
     case 'X': return `X ${prettyNNF(n.child)}`;
     case 'and': return `(${prettyNNF(n.left)} ∧ ${prettyNNF(n.right)})`;
     case 'or': return `(${prettyNNF(n.left)} ∨ ${prettyNNF(n.right)})`;
-    case 'U': return `(${prettyNNF(n.left)} U ${prettyNNF(n.right)})`;
-    case 'R': return `(${prettyNNF(n.left)} R ${prettyNNF(n.right)})`;
+    case 'U': return n.left.kind === 'true' ? `F ${prettyNNF(n.right)}` : `(${prettyNNF(n.left)} U ${prettyNNF(n.right)})`;
+    case 'R': return n.left.kind === 'false' ? `G ${prettyNNF(n.right)}` : `(${prettyNNF(n.left)} R ${prettyNNF(n.right)})`;
   }
 }
 

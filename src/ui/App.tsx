@@ -83,6 +83,7 @@ export default function App() {
     if (on && (trace === null || trace.loopIndex !== null)) {
       setTrace({ stateIds: [], loopIndex: null });
     }
+    if (on) setViewTab('model');
     setRecording(on);
   }
 
@@ -120,7 +121,11 @@ export default function App() {
     const m = new Map<string, AllPathsResult>();
     for (const f of formulas) {
       if (f.logic !== 'ltl') continue;
-      try { m.set(f.id, checkLTLAllPaths(model, parseLTL(f.text))); } catch { /* parse errors handled in analyses */ }
+      try {
+        m.set(f.id, checkLTLAllPaths(model, parseLTL(f.text)));
+      } catch (e) {
+        if (!(e instanceof ParseError)) throw e; // parse errors handled in analyses
+      }
     }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,9 +195,13 @@ export default function App() {
     if (viewTab === 'automaton') {
       const q = graphable.automaton.states.find((s) => `q${s.id}` === graphHover);
       if (!q) return null;
+      const lines = q.obligations.length > 0 ? [...q.obligations] : ['no obligations (true)'];
+      if (lines.some((l) => l.includes(' R '))) {
+        lines.push('R = release: the right side must hold up to and including when the left side holds.');
+      }
       return {
         title: `${q.name}${q.accepting ? ' (accepting)' : ''}${q.initial ? ' (initial)' : ''}`,
-        lines: q.obligations.length > 0 ? q.obligations : ['no obligations (true)'],
+        lines,
       };
     }
     if (viewTab === 'product') {
@@ -447,9 +456,9 @@ export default function App() {
                   hoverStateId={hoverStateId}
                 />
               ) : viewTab === 'automaton' ? (
-                <GraphView graph={automatonGraph!} onHoverNode={setGraphHover} />
+                <GraphView key={viewTab} graph={automatonGraph!} onHoverNode={setGraphHover} />
               ) : (
-                <GraphView graph={productGraph!} onHoverNode={setGraphHover} />
+                <GraphView key={viewTab} graph={productGraph!} onHoverNode={setGraphHover} />
               )}
             </div>
           </div>

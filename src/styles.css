@@ -90,5 +90,4 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .center-stack { display: flex; flex-direction: column; height: 100%; }
 .center-stack .view-body { flex: 1; position: relative; overflow: hidden; }
 .graph-label { font-size: 12px; }
-.graph-sublabel { font-size: 9px; fill: #666; }
 .edge-label { font-size: 10px; font-family: ui-monospace, monospace; fill: #555; }

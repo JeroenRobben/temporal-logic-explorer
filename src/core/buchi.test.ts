@@ -77,4 +77,8 @@ describe('ltlToBuchi', () => {
     const aut = ltlToBuchi(parseLTL('G F true'));
     expect(aut.states.some((q) => q.accepting)).toBe(true);
   });
+  it('obligations re-sugar F and G', () => {
+    const aut = ltlToBuchi(parseLTL('G F p'));
+    expect(aut.states.some((q) => q.obligations.some((o) => o.includes('G F p')))).toBe(true);
+  });
 });

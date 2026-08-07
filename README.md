@@ -19,6 +19,11 @@ structures — built to learn CTL (and eventually LTL and CTL*) by seeing it.
 - **Formulas (left):** pick LTL or CTL with the header tabs, type, press Enter.
   CTL: `AX EX AF EF AG EG`, `A[p U q]`, `E[p U q]` — checked against the structure.
   LTL: `X F G`, `p U q` — checked against the current trace. Shared: `! & | -> <->`.
+  LTL rows carry two verdicts: on the current trace, and `∀` — over all infinite
+  paths, checked by translating ¬φ to a Büchi automaton and searching the product
+  with your model for an accepting cycle. When `∀✗`, one click loads the
+  counterexample as the active trace. Select an LTL formula to get Model /
+  Automaton / Product tabs above the canvas and explore the construction itself.
 - **Inspector (right):** select a formula and click a subformula to color the
   states satisfying it; step through fixpoint iterations; toggle
   witness/counterexample paths. Select a state to edit its propositions.

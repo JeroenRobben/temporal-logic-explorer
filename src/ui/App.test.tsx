@@ -210,4 +210,36 @@ describe('App', () => {
     fireEvent.click(screen.getByText('AG EF r'));
     expect(document.querySelector('.node-row.selected')).toBeNull();
   });
+
+  it('LTL rows show an all-paths mark (G F r fails on the reset example)', () => {
+    render(<App />);
+    const ltlRow = [...document.querySelectorAll('.formula-row')]
+      .find((r) => r.querySelector('.badge.ltl'))!;
+    const marks = [...ltlRow.querySelectorAll('.verdict')].map((v) => v.textContent);
+    expect(marks).toContain('∀✗');
+  });
+
+  it('loading the counterexample as a trace makes the trace verdict ✗ too', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('G F r'));
+    fireEvent.click(screen.getByText('Load counterexample as trace'));
+    const ltlRow = [...document.querySelectorAll('.formula-row')]
+      .find((r) => r.querySelector('.badge.ltl'))!;
+    const marks = [...ltlRow.querySelectorAll('.verdict')].map((v) => v.textContent);
+    expect(marks[0]).toBe('✗'); // trace verdict: counterexample falsifies G F r
+    expect(document.querySelectorAll('.chip').length).toBeGreaterThan(0); // trace loaded
+  });
+
+  it('view tabs appear for an active LTL formula and switch to the automaton', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('G F r'));
+    expect(screen.getByText('Automaton ¬φ')).toBeTruthy();
+    fireEvent.click(screen.getByText('Automaton ¬φ'));
+    // GraphView renders: at least one double-circle (accepting) exists for ¬(G F r)
+    const svg = document.querySelector('.view-body svg')!;
+    expect(svg.querySelectorAll('circle').length).toBeGreaterThan(0);
+    // switching to a CTL formula hides the tabs
+    fireEvent.click(screen.getByText('AG EF r'));
+    expect(screen.queryByText('Automaton ¬φ')).toBeNull();
+  });
 });

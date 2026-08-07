@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from 'react';
-import { KripkeStructure, KripkeState, stateById, allPropositions } from '../core/kripke';
+import { KripkeStructure, KripkeState, stateById, allPropositions, successors } from '../core/kripke';
 import { Evidence } from '../core/evidence';
 import { EVIDENCE_COLOR } from './colors';
 import { RESERVED_NAMES } from './Inspector';
+import { PendingLasso } from './types';
 
 export interface Highlight {
   sat: Set<string>;
@@ -27,6 +28,11 @@ export interface CanvasProps {
   highlight: Highlight | null;
   evidence: Evidence | null;
   deadlocks: Set<string>;
+  trace: PendingLasso | null;
+  recording: boolean;
+  onRecordingChange: (b: boolean) => void;
+  onTraceClick: (stateId: string) => void;
+  hoverStateId: string | null;
 }
 
 export const R = 28;
@@ -61,6 +67,7 @@ export default function Canvas(props: CanvasProps) {
     model, onChange, onPreview, onBeginEdit,
     selectedStateId, selectedTransition, onSelectState, onSelectTransition,
     highlight, evidence, deadlocks,
+    trace, recording, onRecordingChange, onTraceClick, hoverStateId,
   } = props;
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,6 +106,11 @@ export default function Canvas(props: CanvasProps) {
 
   function onStatePointerDown(e: PointerEvent, s: KripkeState) {
     if (editing?.stateId === s.id) return;
+    if (recording) {
+      e.stopPropagation();
+      onTraceClick(s.id);
+      return;
+    }
     if (e.button !== 0) return;
     e.stopPropagation();
     setCtxMenu(null);
@@ -176,7 +188,7 @@ export default function Canvas(props: CanvasProps) {
       }
     } else if (d.type === 'move' && !d.moved) {
       onSelectState(d.stateId);
-    } else if (d.type === 'pan' && !d.moved) {
+    } else if (d.type === 'pan' && !d.moved && !recording) {
       const p = toWorld(e);
       addStateAt(snapCoord(p.x, false), snapCoord(p.y, false));
     }
@@ -289,6 +301,36 @@ export default function Canvas(props: CanvasProps) {
   const hasReverse = (from: string, to: string) =>
     model.transitions.some((t) => t.from === to && t.to === from);
 
+  const TRACE_COLOR = '#7c3aed';
+  const traceBadges = new Map<string, number[]>();
+  if (trace) {
+    trace.stateIds.forEach((id, i) => {
+      traceBadges.set(id, [...(traceBadges.get(id) ?? []), i + 1]);
+    });
+  }
+  const tracePairs: { a: KripkeState; b: KripkeState; loopBack: boolean }[] = [];
+  if (trace) {
+    for (let i = 0; i + 1 < trace.stateIds.length; i++) {
+      const a = stateById(model, trace.stateIds[i]);
+      const b = stateById(model, trace.stateIds[i + 1]);
+      if (a && b) tracePairs.push({ a, b, loopBack: false });
+    }
+    if (trace.loopIndex !== null && trace.stateIds.length > 0) {
+      const a = stateById(model, trace.stateIds[trace.stateIds.length - 1]);
+      const b = stateById(model, trace.stateIds[trace.loopIndex]);
+      if (a && b) tracePairs.push({ a, b, loopBack: true });
+    }
+  }
+  // While recording: empty/no trace → every state is a valid start; open trace →
+  // successors of the last state; closed loop → no targets.
+  const recordTargets: Set<string> | null = recording
+    ? (() => {
+        if (!trace || trace.stateIds.length === 0) return new Set(model.states.map((s) => s.id));
+        if (trace.loopIndex !== null) return new Set<string>();
+        return new Set(successors(model, trace.stateIds[trace.stateIds.length - 1]));
+      })()
+    : null;
+
   const evidencePairs: { a: KripkeState; b: KripkeState; inLoop: boolean }[] = [];
   let loopEntryState: KripkeState | undefined;
   if (evidence) {
@@ -309,7 +351,8 @@ export default function Canvas(props: CanvasProps) {
 
   const tempFrom = tempEdge ? stateById(model, tempEdge.from) : undefined;
   const ctxState = ctxMenu ? stateById(model, ctxMenu.stateId) : undefined;
-  const hoverState = hover && !drag.current && !editing ? stateById(model, hover.stateId) : undefined;
+  const hoverState = hover && !drag.current && !editing && !recording
+    ? stateById(model, hover.stateId) : undefined;
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -371,6 +414,12 @@ export default function Canvas(props: CanvasProps) {
             <text x={loopEntryState.x - R - 14} y={loopEntryState.y - R - 2} fontSize={16}
               fill={EVIDENCE_COLOR} style={{ userSelect: 'none' }}>⟲</text>
           )}
+          {tracePairs.map(({ a, b, loopBack }, i) => (
+            <path key={`tr-${i}`}
+              d={edgePath(a, b, a.id !== b.id && hasReverse(a.id, b.id))}
+              fill="none" stroke={TRACE_COLOR} strokeWidth={3.5} opacity={0.8}
+              strokeDasharray={loopBack ? '8 5' : undefined} />
+          ))}
           {model.states.map((s) => {
             const inSat = highlight?.sat.has(s.id);
             const isFresh = highlight?.fresh.has(s.id);
@@ -406,6 +455,20 @@ export default function Canvas(props: CanvasProps) {
                 {deadlocks.has(s.id) && (
                   <text x={s.x + R - 4} y={s.y - R + 4} fontSize={14} fill="#dd6b20"
                     style={{ userSelect: 'none' }}>⚠</text>
+                )}
+                {recordTargets?.has(s.id) && (
+                  <circle className="pulse-ring" cx={s.x} cy={s.y} r={R + 8} fill="none"
+                    stroke={TRACE_COLOR} strokeWidth={3} />
+                )}
+                {hoverStateId === s.id && (
+                  <circle cx={s.x} cy={s.y} r={R + 4} fill="none" stroke="#718096"
+                    strokeWidth={2} strokeDasharray="3 3" />
+                )}
+                {traceBadges.has(s.id) && (
+                  <text x={s.x + R + 4} y={s.y - R + 2} fontSize={11} fill={TRACE_COLOR}
+                    fontWeight={700} style={{ userSelect: 'none' }}>
+                    {traceBadges.get(s.id)!.join(',')}
+                  </text>
                 )}
               </g>
             );
@@ -462,9 +525,13 @@ export default function Canvas(props: CanvasProps) {
             }} />
         </div>
       )}
+      <button className={`record-btn ${recording ? 'on' : ''}`}
+        onClick={() => onRecordingChange(!recording)}>
+        {recording ? '■ stop recording' : '⏺ Build trace'}
+      </button>
       <div className="canvas-help">
         click empty or N: add state · drag: move · drag rim handle: transition · double-click: rename ·
-        right-click: propositions · Del: delete · Ctrl+Z: undo · wheel: zoom · Alt while dragging: no snap
+        right-click: propositions · Del: delete · Ctrl+Z: undo · wheel: zoom · Alt while dragging: no snap · ⏺: build trace
       </div>
     </div>
   );

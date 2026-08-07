@@ -4,7 +4,7 @@ import { parseCTL, ParseError } from '../core/ctl-parser';
 import { checkCTL } from '../core/ctl-checker';
 import { parseLTL } from '../core/ltl-parser';
 import { checkLTL } from '../core/ltl-checker';
-import { validateLasso } from '../core/trace';
+import { validateLasso, validatePrefix } from '../core/trace';
 import { findEvidence } from '../core/evidence';
 import { forceLayout } from '../core/layout';
 import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
@@ -40,9 +40,48 @@ export default function App() {
   const [showEvidence, setShowEvidence] = useState(false);
   const [entryLogic, setEntryLogic] = useState<Logic>('ctl');
   const [trace, setTrace] = useState<PendingLasso | null>(initial.trace ?? null);
+  const [recording, setRecording] = useState(false);
+  const [traceNotice, setTraceNotice] = useState<string | null>(null);
+  const [hoverStateId, setHoverStateId] = useState<string | null>(null);
   const layoutAnim = useRef<number | null>(null);
 
   useEffect(() => { save({ model, formulas, trace }); }, [model, formulas, trace]);
+
+  function handleTraceClick(id: string) {
+    if (!trace || trace.stateIds.length === 0) {
+      setTrace({ stateIds: [id], loopIndex: null });
+      return;
+    }
+    if (trace.loopIndex !== null) return; // complete — ignore further clicks
+    const last = trace.stateIds[trace.stateIds.length - 1];
+    if (!model.transitions.some((t) => t.from === last && t.to === id)) return;
+    const existing = trace.stateIds.indexOf(id);
+    if (existing !== -1) {
+      setTrace({ ...trace, loopIndex: existing });
+      setRecording(false);
+    } else {
+      setTrace({ stateIds: [...trace.stateIds, id], loopIndex: null });
+    }
+  }
+
+  function startRecording(on: boolean) {
+    if (on) setTrace({ stateIds: [], loopIndex: null });
+    setRecording(on);
+  }
+
+  // Trace revalidation on model edits: if the current trace prefix/lasso is no
+  // longer consistent with the (possibly edited) model, drop it and surface why.
+  useEffect(() => {
+    if (!trace) return;
+    const err = trace.loopIndex === null
+      ? validatePrefix(model, trace.stateIds)
+      : validateLasso(model, { stateIds: trace.stateIds, loopIndex: trace.loopIndex });
+    if (err) {
+      setTrace(null);
+      setTraceNotice(`Trace cleared — ${err}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model]);
 
   const completeLasso = useMemo(() => {
     if (!trace || trace.loopIndex === null) return null;
@@ -214,7 +253,10 @@ export default function App() {
         redo();
         return;
       }
-      if (e.key === 'Escape') setSelection(null);
+      if (e.key === 'Escape') {
+        if (recording) { setRecording(false); return; }
+        setSelection(null);
+      }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection?.kind === 'state') {
         const id = selection.id;
         if (model.states.some((s) => s.id === id)) {
@@ -232,7 +274,7 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection, model, history]);
+  }, [selection, model, history, recording]);
 
   return (
     <>
@@ -272,7 +314,8 @@ export default function App() {
             }}
           />
         </div>
-        <div className="pane center">
+        <div className="pane center" onMouseLeave={() => setHoverStateId(null)}>
+          {traceNotice && <div className="muted" style={{ padding: '4px 10px' }}>{traceNotice}</div>}
           <Canvas
             model={model}
             onChange={commitModel}
@@ -286,6 +329,11 @@ export default function App() {
             highlight={highlight}
             evidence={evidence}
             deadlocks={deadlocks}
+            trace={trace}
+            recording={recording}
+            onRecordingChange={startRecording}
+            onTraceClick={handleTraceClick}
+            hoverStateId={hoverStateId}
           />
         </div>
         <div className="pane right">

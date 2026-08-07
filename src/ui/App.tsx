@@ -48,6 +48,7 @@ export default function App() {
   useEffect(() => { save({ model, formulas, trace }); }, [model, formulas, trace]);
 
   function handleTraceClick(id: string) {
+    setTraceNotice(null);
     if (!trace || trace.stateIds.length === 0) {
       setTrace({ stateIds: [id], loopIndex: null });
       return;
@@ -55,7 +56,7 @@ export default function App() {
     if (trace.loopIndex !== null) return; // complete — ignore further clicks
     const last = trace.stateIds[trace.stateIds.length - 1];
     if (!model.transitions.some((t) => t.from === last && t.to === id)) return;
-    const existing = trace.stateIds.indexOf(id);
+    const existing = trace.stateIds.lastIndexOf(id);
     if (existing !== -1) {
       setTrace({ ...trace, loopIndex: existing });
       setRecording(false);
@@ -65,7 +66,10 @@ export default function App() {
   }
 
   function startRecording(on: boolean) {
-    if (on) setTrace({ stateIds: [], loopIndex: null });
+    setTraceNotice(null);
+    if (on && (trace === null || trace.loopIndex !== null)) {
+      setTrace({ stateIds: [], loopIndex: null });
+    }
     setRecording(on);
   }
 

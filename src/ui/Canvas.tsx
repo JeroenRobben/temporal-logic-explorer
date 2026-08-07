@@ -284,6 +284,7 @@ export default function Canvas(props: CanvasProps) {
   function onStateContextMenu(e: MouseEvent, s: KripkeState) {
     e.preventDefault();
     e.stopPropagation();
+    if (recording) return;
     const rect = containerRef.current!.getBoundingClientRect();
     setCtxMenu({ stateId: s.id, cx: e.clientX - rect.left, cy: e.clientY - rect.top });
   }
@@ -426,7 +427,11 @@ export default function Canvas(props: CanvasProps) {
             return (
               <g key={s.id}
                 onPointerDown={(e) => onStatePointerDown(e, s)}
-                onDoubleClick={(e) => { e.stopPropagation(); setEditing({ stateId: s.id, text: s.name }); }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  if (recording) return;
+                  setEditing({ stateId: s.id, text: s.name });
+                }}
                 onContextMenu={(e) => onStateContextMenu(e, s)}
                 style={{ cursor: 'pointer' }}
               >

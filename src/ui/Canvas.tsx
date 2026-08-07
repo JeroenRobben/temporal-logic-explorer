@@ -39,7 +39,9 @@ export const R = 28;
 export const GRID = 20;
 const HANDLE_R = 9;
 
-export function edgePath(a: KripkeState, b: KripkeState, curved: boolean): string {
+export interface EdgeEndpoint { id: string; x: number; y: number }
+
+export function edgePath(a: EdgeEndpoint, b: EdgeEndpoint, curved: boolean): string {
   if (a.id === b.id) {
     return `M ${a.x - 10} ${a.y - R + 4} C ${a.x - 45} ${a.y - R - 52}, ${a.x + 45} ${a.y - R - 52}, ${a.x + 10} ${a.y - R + 4}`;
   }

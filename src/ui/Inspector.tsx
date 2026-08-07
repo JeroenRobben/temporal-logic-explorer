@@ -21,6 +21,7 @@ export interface InspectorProps {
   evidence: Evidence | null;
   onDeleteTransition: (from: string, to: string) => void;
   onLoadCounterexample: (l: Lasso) => void;
+  graphDetail: { title: string; lines: string[] } | null;
 }
 
 export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
@@ -139,7 +140,7 @@ export default function Inspector(props: InspectorProps) {
     model, onChange, selection, analysis,
     selectedNodeId, onSelectNode, stepIndex, onStepIndex,
     showEvidence, onShowEvidence, evidence, onDeleteTransition,
-    onLoadCounterexample,
+    onLoadCounterexample, graphDetail,
   } = props;
   const [newProp, setNewProp] = useState('');
 
@@ -281,6 +282,13 @@ export default function Inspector(props: InspectorProps) {
                 return <div className="muted">No initial states — mark one to check all paths.</div>;
             }
           })()}
+          {graphDetail && (
+            <>
+              <div className="section-title">Hovered node</div>
+              <div style={{ fontWeight: 600 }}>{graphDetail.title}</div>
+              {graphDetail.lines.map((l, i) => <div key={i} className="muted">{l}</div>)}
+            </>
+          )}
         </div>
       );
     }

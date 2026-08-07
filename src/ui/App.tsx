@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { deadlockStates, KripkeStructure } from '../core/kripke';
+import { deadlockStates, KripkeStructure, stateById } from '../core/kripke';
 import { parseCTL, ParseError } from '../core/ctl-parser';
 import { checkCTL } from '../core/ctl-checker';
-import { parseLTL } from '../core/ltl-parser';
+import { parseLTL, pretty as prettyLTL } from '../core/ltl-parser';
 import { checkLTL } from '../core/ltl-checker';
 import { Lasso, validateLasso, validatePrefix } from '../core/trace';
-import { checkLTLAllPaths } from '../core/ltl-allpaths';
+import { AllPathsResult, checkLTLAllPaths } from '../core/ltl-allpaths';
 import { findEvidence } from '../core/evidence';
 import { forceLayout } from '../core/layout';
 import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
@@ -16,6 +16,7 @@ import { useHistory } from './useHistory';
 import Header from './Header';
 import FormulaPanel from './FormulaPanel';
 import Canvas, { Highlight } from './Canvas';
+import GraphView, { RenderGraph } from './GraphView';
 import Inspector from './Inspector';
 import Timeline from './Timeline';
 
@@ -45,7 +46,11 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [traceNotice, setTraceNotice] = useState<string | null>(null);
   const [hoverStateId, setHoverStateId] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState<'model' | 'automaton' | 'product'>('model');
+  const [graphHover, setGraphHover] = useState<string | null>(null);
   const layoutAnim = useRef<number | null>(null);
+
+  useEffect(() => { setViewTab('model'); setGraphHover(null); }, [activeFormulaId]);
 
   useEffect(() => { save({ model, formulas, trace }); }, [model, formulas, trace]);
 
@@ -101,13 +106,33 @@ export default function App() {
     return validateLasso(model, lasso) === null ? lasso : null;
   }, [trace, model]);
 
+  // Structural key: the Büchi pipeline (translation + product + emptiness) only
+  // depends on the model's states/propositions/transitions, not on layout
+  // (x/y). Keying allPathsMap on this instead of `model` means drags and
+  // auto-layout animation frames no longer re-run the whole pipeline every
+  // frame — only structural edits (add/remove/rename state, toggle prop,
+  // add/remove transition) do.
+  const structKey = useMemo(() => JSON.stringify({
+    s: model.states.map((s) => [s.id, [...s.propositions].sort(), s.isInitial]),
+    t: model.transitions.map((t) => [t.from, t.to]),
+  }), [model]);
+  const allPathsMap = useMemo(() => {
+    const m = new Map<string, AllPathsResult>();
+    for (const f of formulas) {
+      if (f.logic !== 'ltl') continue;
+      try { m.set(f.id, checkLTLAllPaths(model, parseLTL(f.text))); } catch { /* parse errors handled in analyses */ }
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formulas, structKey]);
+
   const analyses: Analysis[] = useMemo(() =>
     formulas.map((entry) => {
       try {
         if (entry.logic === 'ltl') {
           const ltlAst = parseLTL(entry.text);
           const ltlRows = completeLasso ? checkLTL(model, completeLasso, ltlAst) : undefined;
-          const allPaths = checkLTLAllPaths(model, ltlAst);
+          const allPaths = allPathsMap.get(entry.id);
           return {
             entry, ltlAst, ltlRows, allPaths,
             verdict: ltlRows ? ltlRows.get(ltlAst.id)![0] : null,
@@ -120,7 +145,7 @@ export default function App() {
         if (e instanceof ParseError) return { entry, error: e, verdict: null };
         throw e;
       }
-    }), [formulas, model, completeLasso]);
+    }), [formulas, model, completeLasso, allPathsMap]);
 
   const selectedFormulaId = selection?.kind === 'formula' ? selection.id : null;
   const selectedAnalysis = analyses.find((a) => a.entry.id === selectedFormulaId) ?? null;
@@ -128,6 +153,63 @@ export default function App() {
 
   const activeLTLAnalysis = activeAnalysis && activeAnalysis.entry.logic === 'ltl' && activeAnalysis.ltlAst
     ? activeAnalysis : null;
+
+  const graphable = activeLTLAnalysis?.allPaths &&
+    (activeLTLAnalysis.allPaths.kind === 'holds' || activeLTLAnalysis.allPaths.kind === 'fails')
+    ? activeLTLAnalysis.allPaths : null;
+
+  const automatonGraph: RenderGraph | null = useMemo(() => {
+    if (!graphable) return null;
+    const lit = (l: { prop: string; negated: boolean }) => (l.negated ? `¬${l.prop}` : l.prop);
+    return {
+      nodes: graphable.automaton.states.map((q) => ({
+        id: `q${q.id}`, label: q.name, accepting: q.accepting, initial: q.initial,
+      })),
+      edges: graphable.automaton.transitions.map((t) => ({
+        from: `q${t.from}`, to: `q${t.to}`,
+        label: t.guard.length === 0 ? 'true' : t.guard.map(lit).join('∧'),
+      })),
+    };
+  }, [graphable]);
+
+  const productGraph: RenderGraph | null = useMemo(() => {
+    if (!graphable) return null;
+    return {
+      nodes: graphable.product.states.map((p) => ({
+        id: p.id,
+        label: `${stateById(model, p.modelStateId)?.name ?? p.modelStateId}×${
+          graphable.automaton.states.find((q) => q.id === p.buchiStateId)?.name ?? p.buchiStateId}`,
+        accepting: p.accepting, initial: p.initial,
+      })),
+      edges: graphable.product.edges.map((e) => ({ from: e.from, to: e.to })),
+    };
+  }, [graphable, model]);
+
+  const graphDetail = useMemo(() => {
+    if (!graphable || graphHover === null) return null;
+    if (viewTab === 'automaton') {
+      const q = graphable.automaton.states.find((s) => `q${s.id}` === graphHover);
+      if (!q) return null;
+      return {
+        title: `${q.name}${q.accepting ? ' (accepting)' : ''}${q.initial ? ' (initial)' : ''}`,
+        lines: q.obligations.length > 0 ? q.obligations : ['no obligations (true)'],
+      };
+    }
+    if (viewTab === 'product') {
+      const p = graphable.product.states.find((s) => s.id === graphHover);
+      if (!p) return null;
+      const q = graphable.automaton.states.find((s) => s.id === p.buchiStateId);
+      return {
+        title: `${graphHover}${p.accepting ? ' (accepting)' : ''}`,
+        lines: [
+          `model state: ${stateById(model, p.modelStateId)?.name ?? p.modelStateId}`,
+          `automaton state: ${q?.name ?? p.buchiStateId}`,
+          ...(q && q.obligations.length > 0 ? [`obligations: ${q.obligations.join(', ')}`] : []),
+        ],
+      };
+    }
+    return null;
+  }, [graphable, graphHover, viewTab, model]);
 
   const highlight: Highlight | null = useMemo(() => {
     if (!activeAnalysis?.record || selectedNodeId === null) return null;
@@ -331,25 +413,46 @@ export default function App() {
           />
         </div>
         <div className="pane center" onMouseLeave={() => setHoverStateId(null)}>
-          <Canvas
-            model={model}
-            onChange={commitModel}
-            onPreview={previewModel}
-            onBeginEdit={beginEdit}
-            selectedStateId={selection?.kind === 'state' ? selection.id : null}
-            selectedTransition={selection?.kind === 'transition'
-              ? { from: selection.from, to: selection.to } : null}
-            onSelectState={selectState}
-            onSelectTransition={selectTransition}
-            highlight={highlight}
-            evidence={evidence}
-            deadlocks={deadlocks}
-            trace={trace}
-            recording={recording}
-            onRecordingChange={startRecording}
-            onTraceClick={handleTraceClick}
-            hoverStateId={hoverStateId}
-          />
+          <div className="center-stack">
+            {graphable && (
+              <div className="view-tabs">
+                <button className={`tab ${viewTab === 'model' ? 'active' : ''}`}
+                  onClick={() => setViewTab('model')}>Model</button>
+                <button className={`tab ${viewTab === 'automaton' ? 'active' : ''}`}
+                  title={`Büchi automaton for ¬(${activeLTLAnalysis!.ltlAst ? prettyLTL(activeLTLAnalysis!.ltlAst) : ''})`}
+                  onClick={() => setViewTab('automaton')}>Automaton ¬φ</button>
+                <button className={`tab ${viewTab === 'product' ? 'active' : ''}`}
+                  onClick={() => setViewTab('product')}>Product</button>
+              </div>
+            )}
+            <div className="view-body">
+              {(!graphable || viewTab === 'model') ? (
+                <Canvas
+                  model={model}
+                  onChange={commitModel}
+                  onPreview={previewModel}
+                  onBeginEdit={beginEdit}
+                  selectedStateId={selection?.kind === 'state' ? selection.id : null}
+                  selectedTransition={selection?.kind === 'transition'
+                    ? { from: selection.from, to: selection.to } : null}
+                  onSelectState={selectState}
+                  onSelectTransition={selectTransition}
+                  highlight={highlight}
+                  evidence={evidence}
+                  deadlocks={deadlocks}
+                  trace={trace}
+                  recording={recording}
+                  onRecordingChange={startRecording}
+                  onTraceClick={handleTraceClick}
+                  hoverStateId={hoverStateId}
+                />
+              ) : viewTab === 'automaton' ? (
+                <GraphView graph={automatonGraph!} onHoverNode={setGraphHover} />
+              ) : (
+                <GraphView graph={productGraph!} onHoverNode={setGraphHover} />
+              )}
+            </div>
+          </div>
         </div>
         <div className="pane right">
           <Inspector
@@ -366,6 +469,7 @@ export default function App() {
             evidence={evidence}
             onDeleteTransition={deleteTransition}
             onLoadCounterexample={loadCounterexample}
+            graphDetail={graphDetail}
           />
         </div>
       </div>

@@ -85,3 +85,10 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .timeline .row-selected { background: #ebf4ff; }
 .notice { background: #fffaf0; border: 1px solid #ed8936; border-radius: 4px;
   padding: 4px 8px; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 8px; }
+
+.view-tabs { display: flex; gap: 4px; padding: 6px 10px 0; background: #fdfdfd; }
+.center-stack { display: flex; flex-direction: column; height: 100%; }
+.center-stack .view-body { flex: 1; position: relative; overflow: hidden; }
+.graph-label { font-size: 12px; }
+.graph-sublabel { font-size: 9px; fill: #666; }
+.edge-label { font-size: 10px; font-family: ui-monospace, monospace; fill: #555; }

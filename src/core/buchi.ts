@@ -246,8 +246,12 @@ export function ltlToBuchi(root: LTLNode, maxStates = 500): BuchiAutomaton {
       .filter((f): f is Extract<NNF, { kind: 'lit' }> => f.kind === 'lit')
       .map((f) => ({ prop: f.prop, negated: f.negated }));
   const obligationsOf = (n: TNode): string[] => [...n.now.values()].map(prettyNNF);
+  // A U-obligation is discharged when its right operand held here. The 'true'
+  // expansion case never records ⊤ in now, so ⊤-right untils (e.g. from G F true)
+  // must be treated as always-discharged — without this guard their acceptance
+  // set is empty and the automaton's language silently collapses to ∅.
   const inF = (n: TNode, u: { key: string; rightKey: string }): boolean =>
-    !n.now.has(u.key) || n.now.has(u.rightKey);
+    !n.now.has(u.key) || u.rightKey === '⊤' || n.now.has(u.rightKey);
 
   const k = uList.length;
   const states: BuchiState[] = [];

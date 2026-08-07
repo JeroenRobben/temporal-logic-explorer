@@ -73,4 +73,8 @@ describe('ltlToBuchi', () => {
       expect(Array.isArray(q.obligations)).toBe(true);
     }
   });
+  it('⊤-right untils stay dischargeable: G F true has an accepting state', () => {
+    const aut = ltlToBuchi(parseLTL('G F true'));
+    expect(aut.states.some((q) => q.accepting)).toBe(true);
+  });
 });

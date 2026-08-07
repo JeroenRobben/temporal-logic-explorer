@@ -16,11 +16,17 @@ structures — built to learn CTL (and eventually LTL and CTL*) by seeing it.
   state to rename inline, right-click for propositions, Delete removes the selection,
   arrows nudge, mouse wheel zooms. Ctrl+Z / Ctrl+Shift+Z undo and redo; the
   Auto-layout button untangles the graph.
-- **Formulas (left):** type CTL, press Enter. ASCII syntax: `! & | -> <->`,
-  `AX EX AF EF AG EG`, `A[p U q]`, `E[p U q]`.
+- **Formulas (left):** pick LTL or CTL with the header tabs, type, press Enter.
+  CTL: `AX EX AF EF AG EG`, `A[p U q]`, `E[p U q]` — checked against the structure.
+  LTL: `X F G`, `p U q` — checked against the current trace. Shared: `! & | -> <->`.
 - **Inspector (right):** select a formula and click a subformula to color the
   states satisfying it; step through fixpoint iterations; toggle
   witness/counterexample paths. Select a state to edit its propositions.
+- **Trace (bottom):** press ⏺ and click states on the canvas to walk a path; click a
+  state already on the trace to close the loop (lasso). The timeline shows every
+  subformula's truth at every position — loop columns tinted, hover a true F/U/X
+  cell to see the position that justifies it. Trim with ✕, extend with the
+  successor buttons.
 
 Everything is checked live on every edit and saved to localStorage.
 

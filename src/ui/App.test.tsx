@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, createEvent, act } from '@testing-library/react';
+import { render, screen, within, fireEvent, createEvent, act } from '@testing-library/react';
 import App from './App';
 
 // jsdom has no PointerEvent constructor, so fireEvent.pointerDown/Up build a
@@ -141,5 +141,73 @@ describe('App', () => {
       window.requestAnimationFrame = origRaf;
       window.cancelAnimationFrame = origCaf;
     }
+  });
+
+  it('LTL formula shows – without a trace, with a tooltip-style hint', () => {
+    render(<App />);
+    const rows = document.querySelectorAll('.formula-row');
+    const ltlRow = [...rows].find((r) => r.querySelector('.badge.ltl'));
+    expect(ltlRow).toBeTruthy();
+    expect(ltlRow!.querySelector('.verdict')!.textContent).toBe('–');
+  });
+
+  it('recording a lasso through reset makes G F r true', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('⏺ Build trace'));
+    const svg = document.querySelector('svg')!;
+    const nameAt: Record<string, string> = { '160,140': 'work', '380,140': 'error', '270,320': 'reset' };
+    for (const [x, y] of [[160, 140], [380, 140], [270, 320], [160, 140]] as const) {
+      const label = within(svg as unknown as HTMLElement).getByText(nameAt[`${x},${y}`]);
+      firePointer('pointerDown', label, { clientX: x, clientY: y });
+      firePointer('pointerUp', svg, { clientX: x, clientY: y });
+    }
+    // clicking work again closed the loop; G F r now evaluates on w e r cycle
+    const rows = document.querySelectorAll('.formula-row');
+    const ltlRow = [...rows].find((r) => r.querySelector('.badge.ltl'))!;
+    expect(ltlRow.querySelector('.verdict')!.textContent).toBe('✓');
+  });
+
+  it('trimming the trace reopens the loop and reverts LTL verdicts to –', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('⏺ Build trace'));
+    const svg = document.querySelector('svg')!;
+    const nameAt: Record<string, string> = { '160,140': 'work', '380,140': 'error', '270,320': 'reset' };
+    for (const [x, y] of [[160, 140], [380, 140], [270, 320], [160, 140]] as const) {
+      const label = within(svg as unknown as HTMLElement).getByText(nameAt[`${x},${y}`]);
+      firePointer('pointerDown', label, { clientX: x, clientY: y });
+      firePointer('pointerUp', svg, { clientX: x, clientY: y });
+    }
+    fireEvent.click(document.querySelectorAll('.chip .trim')[2]); // trim 'reset'
+    const ltlRow = [...document.querySelectorAll('.formula-row')]
+      .find((r) => r.querySelector('.badge.ltl'))!;
+    expect(ltlRow.querySelector('.verdict')!.textContent).toBe('–');
+  });
+
+  it('deleting a state on the trace clears the trace with a notice', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('⏺ Build trace'));
+    const svg = document.querySelector('svg')!;
+    const nameAt: Record<string, string> = { '160,140': 'work', '380,140': 'error', '270,320': 'reset' };
+    for (const [x, y] of [[160, 140], [380, 140], [270, 320], [160, 140]] as const) {
+      const label = within(svg as unknown as HTMLElement).getByText(nameAt[`${x},${y}`]);
+      firePointer('pointerDown', label, { clientX: x, clientY: y });
+      firePointer('pointerUp', svg, { clientX: x, clientY: y });
+    }
+    // select and delete 'error'
+    firePointer('pointerDown', within(svg as unknown as HTMLElement).getByText('error'), { clientX: 380, clientY: 140 });
+    firePointer('pointerUp', svg, { clientX: 380, clientY: 140 });
+    fireEvent.keyDown(document.body, { key: 'Delete' });
+    expect(screen.getByText(/Trace cleared/)).toBeTruthy();
+    expect(document.querySelectorAll('.chip').length).toBe(0);
+  });
+
+  it('switching from an LTL formula to a CTL formula does not carry selectedNodeId across', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('G F r'));
+    const ltlNodeRows = document.querySelectorAll('.node-row');
+    expect(ltlNodeRows.length).toBeGreaterThan(0);
+    fireEvent.click(ltlNodeRows[0]);
+    fireEvent.click(screen.getByText('AG EF r'));
+    expect(document.querySelector('.node-row.selected')).toBeNull();
   });
 });

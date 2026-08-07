@@ -135,16 +135,23 @@ export default function Timeline(props: TimelineProps) {
         {trace && trace.loopIndex === null && trace.stateIds.length > 0 && (
           <span className="muted">no loop yet —</span>
         )}
-        {succ.map((id) => (
-          <button key={`x-${id}`} onClick={() => extend(id)}>
-            → {stateById(model, id)?.name ?? id}
-          </button>
-        ))}
-        {loopCandidates.map(({ id, idx }) => (
-          <button key={`l-${idx}`} onClick={() => closeLoop(idx)}>
-            ⟲ {stateById(model, id)?.name ?? id}
-          </button>
-        ))}
+        {succ.map((id) => {
+          const name = stateById(model, id)?.name ?? id;
+          return (
+            <button key={`x-${id}`} title={`extend: visit ${name} again`} onClick={() => extend(id)}>
+              → {name}
+            </button>
+          );
+        })}
+        {loopCandidates.map(({ id, idx }) => {
+          const name = stateById(model, id)?.name ?? id;
+          return (
+            <button key={`l-${idx}`} title={`close the loop back to position ${idx + 1}`}
+              onClick={() => closeLoop(idx)}>
+              ⟲ {name} (pos {idx + 1})
+            </button>
+          );
+        })}
         {trace && (
           <button onClick={() => { onTraceChange(null); onRecordingChange(false); }}>clear trace</button>
         )}

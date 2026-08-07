@@ -241,6 +241,7 @@ export default function Canvas(props: CanvasProps) {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement;
       if (t instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName)) return;
+      if (recording && e.key !== 'Escape') return;
       if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const rect = svgRef.current?.getBoundingClientRect();
         const p = lastPointer.current
@@ -267,7 +268,7 @@ export default function Canvas(props: CanvasProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, selectedStateId, view]);
+  }, [model, selectedStateId, view, recording]);
 
   function commitRename() {
     if (!editing) return;

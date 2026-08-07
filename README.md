@@ -26,7 +26,9 @@ structures — built to learn CTL (and eventually LTL and CTL*) by seeing it.
   state already on the trace to close the loop (lasso). The timeline shows every
   subformula's truth at every position — loop columns tinted, hover a true F/U/X
   cell to see the position that justifies it. Trim with ✕, extend with the
-  successor buttons.
+  successor buttons. Canvas clicks close the loop when you revisit a state; the
+  timeline's → buttons instead pass through it (for traces that visit a state
+  twice before looping).
 
 Everything is checked live on every edit and saved to localStorage.
 

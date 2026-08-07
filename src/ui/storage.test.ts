@@ -28,4 +28,10 @@ describe('storage', () => {
     expect(n.model.transitions).toEqual([{ from: 'a', to: 'b' }, { from: 'b', to: 'b' }]);
     expect(good.model.transitions.length).toBe(3); // input untouched
   });
+  it('v1 formulas without a logic tag validate, and normalizeSavedState defaults them to ctl', () => {
+    const v1 = { ...good, formulas: [{ id: 'f1', text: 'EF p' }] };
+    expect(validateSavedState(v1)).toBe(true);
+    const n = normalizeSavedState(v1 as SavedState);
+    expect(n.formulas).toEqual([{ id: 'f1', text: 'EF p', logic: 'ctl' }]);
+  });
 });

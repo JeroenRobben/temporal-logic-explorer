@@ -15,11 +15,7 @@ export function loadSaved(): SavedState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!validateSavedState(parsed)) return null;
-    const normalized = normalizeSavedState(parsed);
-    return {
-      ...normalized,
-      formulas: normalized.formulas.map((f) => ({ ...f, logic: f.logic ?? 'ctl' })),
-    };
+    return normalizeSavedState(parsed);
   } catch {
     return null;
   }
@@ -33,8 +29,15 @@ export function save(state: SavedState): void {
   }
 }
 
-/** Drop duplicate transitions (same from/to); keeps first occurrence. */
-export function normalizeSavedState(s: SavedState): SavedState {
+/** Input to normalizeSavedState: formulas may be v1 data with no `logic` tag yet. */
+type SavedStateInput = SavedState & { formulas: (FormulaEntry & { logic?: FormulaEntry['logic'] })[] };
+
+/**
+ * Drop duplicate transitions (same from/to); keeps first occurrence.
+ * Also defaults missing `logic` (v1 saves/imports) to 'ctl' — the single
+ * place both loadSaved and Header's import flow route through.
+ */
+export function normalizeSavedState(s: SavedStateInput): SavedState {
   const seen = new Set<string>();
   const transitions = s.model.transitions.filter((t) => {
     const key = `${t.from}->${t.to}`;
@@ -42,7 +45,8 @@ export function normalizeSavedState(s: SavedState): SavedState {
     seen.add(key);
     return true;
   });
-  return { ...s, model: { ...s.model, transitions } };
+  const formulas = s.formulas.map((f) => ({ ...f, logic: f.logic ?? 'ctl' as const }));
+  return { ...s, model: { ...s.model, transitions }, formulas };
 }
 
 export function validateSavedState(x: unknown): x is SavedState {

@@ -80,6 +80,7 @@ export default function App() {
     setTraceNotice(null);
     setRecording(false);
     setTrace({ stateIds: l.stateIds, loopIndex: l.loopIndex });
+    setViewTab('model');
   }
 
   function startRecording(on: boolean) {
@@ -188,23 +189,32 @@ export default function App() {
     ? activeAnalysis : null;
 
   const graphable = useMemo(() => {
-    if (activeLTLAnalysis?.allPaths
-      && (activeLTLAnalysis.allPaths.kind === 'holds' || activeLTLAnalysis.allPaths.kind === 'fails')) {
-      const ap = activeLTLAnalysis.allPaths;
-      return { automaton: ap.automaton, product: ap.product, legend: null as Map<string, string> | null };
-    }
-    if (activeAnalysis?.starResult && selectedNodeId !== null) {
-      const q = activeAnalysis.starResult.quantifiers.get(selectedNodeId);
-      if (q) {
+    const entry = formulas.find((f) => f.id === activeFormulaId);
+    if (entry?.logic === 'ltl' && activeFormulaId !== null) {
+      const ap = allPathsMap.get(activeFormulaId);
+      if (ap && (ap.kind === 'holds' || ap.kind === 'fails')) {
         return {
-          automaton: q.automaton,
-          product: buildProduct(q.labeledModel, q.automaton),
-          legend: q.legend,
+          automaton: ap.automaton, product: ap.product,
+          legend: null as Map<string, string> | null, kind: 'ltl' as const,
         };
       }
     }
+    if (activeFormulaId !== null && selectedNodeId !== null) {
+      const star = starMap.get(activeFormulaId);
+      if (star && star !== 'too-large') {
+        const q = star.quantifiers.get(selectedNodeId);
+        if (q) {
+          return {
+            automaton: q.automaton,
+            product: buildProduct(q.labeledModel, q.automaton),
+            legend: q.legend,
+            kind: 'star' as const,
+          };
+        }
+      }
+    }
     return null;
-  }, [activeLTLAnalysis, activeAnalysis, selectedNodeId]);
+  }, [activeFormulaId, selectedNodeId, allPathsMap, starMap, formulas]);
 
   const automatonGraph: RenderGraph | null = useMemo(() => {
     if (!graphable) return null;
@@ -495,10 +505,12 @@ export default function App() {
                 <button className={`tab ${viewTab === 'model' ? 'active' : ''}`}
                   onClick={() => setViewTab('model')}>Model</button>
                 <button className={`tab ${viewTab === 'automaton' ? 'active' : ''}`}
-                  title={activeLTLAnalysis?.ltlAst
+                  title={graphable.kind === 'ltl' && activeLTLAnalysis?.ltlAst
                     ? `Büchi automaton for ¬(${prettyLTL(activeLTLAnalysis.ltlAst)})`
                     : 'Büchi automaton the checker ran for the selected quantifier (¬ψ for A, ψ for E)'}
-                  onClick={() => setViewTab('automaton')}>Automaton</button>
+                  onClick={() => setViewTab('automaton')}>
+                  {graphable.kind === 'ltl' ? 'Automaton ¬φ' : 'Automaton'}
+                </button>
                 <button className={`tab ${viewTab === 'product' ? 'active' : ''}`}
                   onClick={() => setViewTab('product')}>Product</button>
               </div>

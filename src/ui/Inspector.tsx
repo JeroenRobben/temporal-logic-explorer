@@ -377,6 +377,13 @@ export default function Inspector(props: InspectorProps) {
                   {starResult.sat.get(selectedStar.id)!.has(st.id) ? '✓' : '✗'} {st.name}
                 </div>
               ))}
+              {starResult.quantifiers.get(selectedStar.id) && (
+                <div className="muted">
+                  Automaton shown: {selectedStar.kind === 'A'
+                    ? '¬ψ (runs that would violate the A)'
+                    : 'ψ (runs that witness the E)'}
+                </div>
+              )}
             </>
           )}
           {starResult && (

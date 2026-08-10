@@ -233,14 +233,14 @@ describe('App', () => {
   it('view tabs appear for an active LTL formula and switch to the automaton', () => {
     render(<App />);
     fireEvent.click(screen.getByText('G F r'));
-    expect(screen.getByText('Automaton')).toBeTruthy();
-    fireEvent.click(screen.getByText('Automaton'));
+    expect(screen.getByText('Automaton ¬φ')).toBeTruthy();
+    fireEvent.click(screen.getByText('Automaton ¬φ'));
     // GraphView renders: at least one double-circle (accepting) exists for ¬(G F r)
     const svg = document.querySelector('.view-body svg')!;
     expect(svg.querySelectorAll('circle').length).toBeGreaterThan(0);
     // switching to a CTL formula hides the tabs
     fireEvent.click(screen.getByText('AG EF r'));
-    expect(screen.queryByText('Automaton')).toBeNull();
+    expect(screen.queryByText('Automaton ¬φ')).toBeNull();
   });
 
   it('CTL* formula A G (E F r) verifies on the reset example', () => {

@@ -273,9 +273,16 @@ export default function App() {
   }, [showEvidence, activeAnalysis, model]);
 
   const starEvidence = useMemo(() => {
-    if (!activeAnalysis?.starResult || !activeAnalysis.starAst) return null;
-    return findStarEvidence(model, activeAnalysis.starAst, activeAnalysis.starResult);
-  }, [activeAnalysis, model]);
+    if (activeFormulaId === null) return null;
+    const cached = starMap.get(activeFormulaId);
+    if (!cached || cached === 'too-large') return null;
+    const entry = formulas.find((f) => f.id === activeFormulaId);
+    if (!entry || entry.logic !== 'ctlstar') return null;
+    // Re-parsing yields identical node ids (the parser is deterministic), so the
+    // AST aligns with the cached result's id-keyed maps.
+    return findStarEvidence(model, parseCTLStar(entry.text), cached);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFormulaId, starMap, formulas]);
 
   const deadlocks = useMemo(() => new Set(deadlockStates(model)), [model]);
 

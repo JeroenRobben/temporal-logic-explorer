@@ -1,4 +1,4 @@
-import { KripkeStructure } from './kripke';
+import { KripkeStructure, deadlockStates } from './kripke';
 import { StarNode, classify, pretty as prettyStar } from './ctlstar-parser';
 import { LTLNode } from './ltl-parser';
 import { BuchiAutomaton, ltlToBuchi } from './buchi';
@@ -21,6 +21,8 @@ export interface CTLStarResult {
   /** All initial states satisfy the root; null when there are no initials. */
   verdict: boolean | null;
   quantifiers: Map<number, QuantifierInfo>;
+  /** States with no outgoing transitions. */
+  deadlocks: string[];
 }
 
 /**
@@ -111,9 +113,9 @@ export function checkCTLStar(
 
     function conv(n: StarNode): LTLNode {
       if (cls.get(n.id) === 'state') {
+        const s = evalState(n); // records sat for every state-level node
         if (n.kind === 'prop') return { id: fresh(), kind: 'prop', name: n.name };
         if (n.kind === 'true' || n.kind === 'false') return { id: fresh(), kind: n.kind };
-        const s = evalState(n);
         const name = `#${n.id}`;
         legend.set(name, prettyStar(n));
         pseudoSat.set(name, s);
@@ -146,7 +148,7 @@ export function checkCTLStar(
   const rootSat = evalState(root);
   const initials = model.states.filter((s) => s.isInitial);
   const verdict = initials.length === 0 ? null : initials.every((s) => rootSat.has(s.id));
-  return { sat, verdict, quantifiers };
+  return { sat, verdict, quantifiers, deadlocks: deadlockStates(model) };
 }
 
 /**

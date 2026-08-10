@@ -107,6 +107,24 @@ describe('checkCTLStar — beyond CTL', () => {
   it('propagates AutomatonTooLarge when capped', () => {
     expect(() => checkCTLStar(reset, parseCTLStar('A G F r'), 1)).toThrow(AutomatonTooLarge);
   });
+  it('records sat for state-level leaves inside path formulas', () => {
+    const root = parseCTLStar('A G (E F r)');
+    const res = checkCTLStar(reset, root);
+    let found = 0;
+    (function walk(n: import('./ctlstar-parser').StarNode) {
+      if (n.kind === 'prop' && n.name === 'r') { found++; expect(res.sat.get(n.id)).toBeDefined(); }
+      if ('child' in n) walk(n.child);
+      if ('left' in n) { walk(n.left); walk(n.right); }
+    })(root);
+    expect(found).toBeGreaterThan(0);
+  });
+  it('reports deadlock states', () => {
+    const withDead: KripkeStructure = {
+      states: [...reset.states, { id: 'd', name: 'dead', propositions: [], isInitial: false, x: 0, y: 0 }],
+      transitions: [...reset.transitions, { from: 'r', to: 'd' }],
+    };
+    expect(checkCTLStar(withDead, parseCTLStar('A F r')).deadlocks).toEqual(['d']);
+  });
 });
 
 describe('findStarEvidence', () => {

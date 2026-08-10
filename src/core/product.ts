@@ -19,8 +19,14 @@ function satisfies(props: string[], guard: Literal[]): boolean {
 }
 
 /** Synchronous product of a Kripke structure with a Büchi automaton.
- *  Only states reachable from the initial set are materialized. */
-export function buildProduct(model: KripkeStructure, aut: BuchiAutomaton): ProductGraph {
+ *  Only states reachable from the initial set are materialized.
+ *  `initialIds` overrides which model states seed the product (default: the
+ *  model's isInitial states) — used by the CTL* checker for per-state checks. */
+export function buildProduct(
+  model: KripkeStructure,
+  aut: BuchiAutomaton,
+  initialIds?: string[],
+): ProductGraph {
   const nameOf = new Map(aut.states.map((q) => [q.id, q.name]));
   const acceptingOf = new Map(aut.states.map((q) => [q.id, q.accepting]));
   const outgoing = new Map<number, { to: number; guard: Literal[] }[]>();
@@ -36,7 +42,10 @@ export function buildProduct(model: KripkeStructure, aut: BuchiAutomaton): Produ
   const edges: { from: string; to: string }[] = [];
   const queue: ProductState[] = [];
 
-  for (const s of model.states.filter((x) => x.isInitial)) {
+  const seeds = initialIds !== undefined
+    ? model.states.filter((x) => initialIds.includes(x.id))
+    : model.states.filter((x) => x.isInitial);
+  for (const s of seeds) {
     for (const q of aut.states.filter((x) => x.initial)) {
       if (!satisfies(s.propositions, q.entryGuard)) continue;
       const ps: ProductState = {

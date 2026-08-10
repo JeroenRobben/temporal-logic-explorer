@@ -59,4 +59,19 @@ describe('buildProduct', () => {
     expect(prod.edges.some((e) => e.from === 'a×q0' && e.to === 'b×q1')).toBe(true);
     expect(prod.edges.some((e) => e.from === 'b×q1' && e.to === 'a×q1')).toBe(false); // a lacks p? guard on q1 entry is p
   });
+  it('initialIds overrides which model states seed the product', () => {
+    const prod = buildProduct(k, fpAut, ['b']);
+    const init = prod.states.filter((s) => s.initial);
+    // b×q0 is initial because q0 is automaton-initial; q1 is not automaton-initial, though it admits b via its entry guard
+    expect(init.map((s) => s.id).sort()).toEqual(['b×q0']);
+    expect(prod.states.some((s) => s.id === 'a×q0' && s.initial)).toBe(false);
+  });
+  it('initialIds [] yields an empty product', () => {
+    const prod = buildProduct(k, fpAut, []);
+    expect(prod.states.length).toBe(0);
+  });
+  it('omitting initialIds keeps the default behavior', () => {
+    const prod = buildProduct(k, fpAut);
+    expect(prod.states.filter((s) => s.initial).map((s) => s.id)).toEqual(['a×q0']);
+  });
 });

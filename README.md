@@ -24,6 +24,12 @@ structures — built to learn CTL (and eventually LTL and CTL*) by seeing it.
   with your model for an accepting cycle. When `∀✗`, one click loads the
   counterexample as the active trace. Select an LTL formula to get Model /
   Automaton / Product tabs above the canvas and explore the construction itself.
+  CTL*: `A`/`E` quantify arbitrary path formulas — `A F G p`, `A G (E F p)`,
+  `E (G F p)` — checked by labeling state subformulas and running the Büchi
+  pipeline per state. State subformulas color the canvas; selecting an A/E
+  node shows its automaton and product (pseudo-props ⟨…⟩ stand for labeled
+  state subformulas); a failing top-level `A` (or holding `E`) loads its
+  counterexample (witness) as the active trace.
 - **Inspector (right):** select a formula and click a subformula to color the
   states satisfying it; step through fixpoint iterations; toggle
   witness/counterexample paths. Select a state to edit its propositions.

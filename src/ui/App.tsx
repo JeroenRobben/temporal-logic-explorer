@@ -8,6 +8,7 @@ import { Lasso, validateLasso, validatePrefix } from '../core/trace';
 import { AllPathsResult, checkLTLAllPaths } from '../core/ltl-allpaths';
 import { findEvidence } from '../core/evidence';
 import { forceLayout } from '../core/layout';
+import { buildProduct } from '../core/product';
 import { parseCTLStar, classify } from '../core/ctlstar-parser';
 import { checkCTLStar, findStarEvidence, CTLStarResult } from '../core/ctlstar-checker';
 import { AutomatonTooLarge } from '../core/buchi';
@@ -186,13 +187,33 @@ export default function App() {
   const activeLTLAnalysis = activeAnalysis && activeAnalysis.entry.logic === 'ltl' && activeAnalysis.ltlAst
     ? activeAnalysis : null;
 
-  const graphable = activeLTLAnalysis?.allPaths &&
-    (activeLTLAnalysis.allPaths.kind === 'holds' || activeLTLAnalysis.allPaths.kind === 'fails')
-    ? activeLTLAnalysis.allPaths : null;
+  const graphable = useMemo(() => {
+    if (activeLTLAnalysis?.allPaths
+      && (activeLTLAnalysis.allPaths.kind === 'holds' || activeLTLAnalysis.allPaths.kind === 'fails')) {
+      const ap = activeLTLAnalysis.allPaths;
+      return { automaton: ap.automaton, product: ap.product, legend: null as Map<string, string> | null };
+    }
+    if (activeAnalysis?.starResult && selectedNodeId !== null) {
+      const q = activeAnalysis.starResult.quantifiers.get(selectedNodeId);
+      if (q) {
+        return {
+          automaton: q.automaton,
+          product: buildProduct(q.labeledModel, q.automaton),
+          legend: q.legend,
+        };
+      }
+    }
+    return null;
+  }, [activeLTLAnalysis, activeAnalysis, selectedNodeId]);
 
   const automatonGraph: RenderGraph | null = useMemo(() => {
     if (!graphable) return null;
-    const lit = (l: { prop: string; negated: boolean }) => (l.negated ? `¬${l.prop}` : l.prop);
+    const lit = (l: { prop: string; negated: boolean }) => {
+      const base = l.prop.startsWith('#')
+        ? `⟨${graphable.legend?.get(l.prop) ?? l.prop}⟩`
+        : l.prop;
+      return l.negated ? `¬${base}` : base;
+    };
     return {
       nodes: graphable.automaton.states.map((q) => ({
         id: `q${q.id}`, label: q.name, accepting: q.accepting, initial: q.initial,
@@ -225,6 +246,9 @@ export default function App() {
       const lines = q.obligations.length > 0 ? [...q.obligations] : ['no obligations (true)'];
       if (lines.some((l) => l.includes(' R '))) {
         lines.push('R = release: the right side must hold up to and including when the left side holds.');
+      }
+      if (graphable.legend) {
+        for (const [k, v] of graphable.legend.entries()) lines.push(`${k} = ${v}`);
       }
       return {
         title: `${q.name}${q.accepting ? ' (accepting)' : ''}${q.initial ? ' (initial)' : ''}`,
@@ -471,8 +495,10 @@ export default function App() {
                 <button className={`tab ${viewTab === 'model' ? 'active' : ''}`}
                   onClick={() => setViewTab('model')}>Model</button>
                 <button className={`tab ${viewTab === 'automaton' ? 'active' : ''}`}
-                  title={`Büchi automaton for ¬(${activeLTLAnalysis!.ltlAst ? prettyLTL(activeLTLAnalysis!.ltlAst) : ''})`}
-                  onClick={() => setViewTab('automaton')}>Automaton ¬φ</button>
+                  title={activeLTLAnalysis?.ltlAst
+                    ? `Büchi automaton for ¬(${prettyLTL(activeLTLAnalysis.ltlAst)})`
+                    : 'Büchi automaton the checker ran for the selected quantifier (¬ψ for A, ψ for E)'}
+                  onClick={() => setViewTab('automaton')}>Automaton</button>
                 <button className={`tab ${viewTab === 'product' ? 'active' : ''}`}
                   onClick={() => setViewTab('product')}>Product</button>
               </div>

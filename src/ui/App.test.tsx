@@ -233,13 +233,52 @@ describe('App', () => {
   it('view tabs appear for an active LTL formula and switch to the automaton', () => {
     render(<App />);
     fireEvent.click(screen.getByText('G F r'));
-    expect(screen.getByText('Automaton ¬φ')).toBeTruthy();
-    fireEvent.click(screen.getByText('Automaton ¬φ'));
+    expect(screen.getByText('Automaton')).toBeTruthy();
+    fireEvent.click(screen.getByText('Automaton'));
     // GraphView renders: at least one double-circle (accepting) exists for ¬(G F r)
     const svg = document.querySelector('.view-body svg')!;
     expect(svg.querySelectorAll('circle').length).toBeGreaterThan(0);
     // switching to a CTL formula hides the tabs
     fireEvent.click(screen.getByText('AG EF r'));
-    expect(screen.queryByText('Automaton ¬φ')).toBeNull();
+    expect(screen.queryByText('Automaton')).toBeNull();
+  });
+
+  it('CTL* formula A G (E F r) verifies on the reset example', () => {
+    render(<App />);
+    fireEvent.click(within(document.querySelector('.header')!).getByText('CTL*'));
+    const input = screen.getByPlaceholderText(/add ctl\* formula/i);
+    fireEvent.change(input, { target: { value: 'A G (E F r)' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    const row = [...document.querySelectorAll('.formula-row')]
+      .find((r) => r.querySelector('.badge.ctlstar'))!;
+    expect(row.querySelector('.verdict')!.textContent).toBe('✓');
+  });
+
+  it('failing A-root offers a counterexample that loads as a trace', () => {
+    render(<App />);
+    fireEvent.click(within(document.querySelector('.header')!).getByText('CTL*'));
+    const input = screen.getByPlaceholderText(/add ctl\* formula/i);
+    fireEvent.change(input, { target: { value: 'A G F r' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    const row = [...document.querySelectorAll('.formula-row')]
+      .find((r) => r.querySelector('.badge.ctlstar'))!;
+    expect(row.querySelector('.verdict')!.textContent).toBe('✗');
+    fireEvent.click(row);
+    fireEvent.click(screen.getByText('Load counterexample as trace'));
+    expect(document.querySelectorAll('.chip').length).toBeGreaterThan(0);
+  });
+
+  it('selecting an A/E node reveals the automaton tab with a legend', () => {
+    render(<App />);
+    fireEvent.click(within(document.querySelector('.header')!).getByText('CTL*'));
+    const input = screen.getByPlaceholderText(/add ctl\* formula/i);
+    fireEvent.change(input, { target: { value: 'A G (E F r)' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.click([...document.querySelectorAll('.formula-row')]
+      .find((r) => r.querySelector('.badge.ctlstar'))!);
+    expect(screen.queryByText('Automaton')).toBeNull(); // no node selected yet
+    // click the root A-node row in the tree (first .node-row)
+    fireEvent.click(document.querySelectorAll('.node-row')[0]);
+    expect(screen.getByText('Automaton')).toBeTruthy();
   });
 });

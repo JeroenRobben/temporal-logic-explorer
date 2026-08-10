@@ -60,6 +60,9 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .badge { font-size: 9px; font-weight: 700; letter-spacing: 0.04em; padding: 1px 4px;
   border-radius: 3px; background: #e2e8f0; color: #4a5568; flex: 0 0 auto; }
 .badge.ltl { background: #e9d8fd; color: #553c9a; }
+.badge.ctlstar { background: #fed7e2; color: #97266d; }
+.swatch.hollow { background: transparent; border: 1px solid #aaa; }
+.path-tag { font-size: 9px; color: #888; border: 1px solid #ddd; border-radius: 3px; padding: 0 3px; }
 
 .pulse-ring { animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { stroke-opacity: 0.9; } 50% { stroke-opacity: 0.25; } }

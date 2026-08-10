@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { KripkeStructure, allPropositions, stateById } from '../core/kripke';
 import { CTLNode, pretty } from '../core/ctl-parser';
 import { LTLNode, pretty as prettyLTL } from '../core/ltl-parser';
+import { StarNode, pretty as prettyStar } from '../core/ctlstar-parser';
 import { Analysis, Selection } from './types';
 import { colorForNode } from './colors';
 import { Evidence } from '../core/evidence';
@@ -22,6 +23,7 @@ export interface InspectorProps {
   onDeleteTransition: (from: string, to: string) => void;
   onLoadCounterexample: (l: Lasso) => void;
   graphDetail: { title: string; lines: string[] } | null;
+  starEvidence: { lasso: Lasso; kind: 'witness' | 'counterexample' } | null;
 }
 
 export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
@@ -42,6 +44,8 @@ const GLOSS: Record<string, string> = {
   F: 'eventually',
   G: 'at every step from here on',
   U: 'the left holds until the right does',
+  A: 'on every path from here',
+  E: 'on some path from here',
 };
 
 function childrenOf(n: CTLNode): CTLNode[] {
@@ -135,12 +139,61 @@ function LTLNodeTree(props: {
   );
 }
 
+function childrenOfStar(n: StarNode): StarNode[] {
+  if ('child' in n) return [n.child];
+  if ('left' in n) return [n.left, n.right];
+  return [];
+}
+
+function labelOfStar(n: StarNode): string {
+  switch (n.kind) {
+    case 'prop': return n.name;
+    case 'true': case 'false': return n.kind;
+    case 'not': return '¬';
+    case 'and': return '∧';
+    case 'or': return '∨';
+    case 'implies': return '→';
+    case 'iff': return '↔';
+    case 'U': return '· U ·';
+    default: return n.kind;
+  }
+}
+
+function StarNodeTree(props: {
+  node: StarNode; depth: number;
+  cls: Map<number, 'state' | 'path'>;
+  selectedNodeId: number | null; onSelectNode: (id: number) => void;
+}) {
+  const { node, depth, cls, selectedNodeId, onSelectNode } = props;
+  const isState = cls.get(node.id) === 'state';
+  return (
+    <div>
+      <div
+        className={`node-row ${node.id === selectedNodeId ? 'selected' : ''}`}
+        style={{ marginLeft: depth * 14 }}
+        onClick={() => onSelectNode(node.id)}
+        title={isState ? GLOSS[node.kind] : 'path formula — true of paths, not states'}
+      >
+        <span className={`swatch ${isState ? '' : 'hollow'}`}
+          style={isState ? { background: colorForNode(node.id) } : undefined} />
+        <span>{labelOfStar(node)}</span>
+        <span className="muted">{prettyStar(node)}</span>
+        {!isState && <span className="path-tag">path</span>}
+      </div>
+      {childrenOfStar(node).map((c) => (
+        <StarNodeTree key={c.id} node={c} depth={depth + 1} cls={cls}
+          selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+      ))}
+    </div>
+  );
+}
+
 export default function Inspector(props: InspectorProps) {
   const {
     model, onChange, selection, analysis,
     selectedNodeId, onSelectNode, stepIndex, onStepIndex,
     showEvidence, onShowEvidence, evidence, onDeleteTransition,
-    onLoadCounterexample, graphDetail,
+    onLoadCounterexample, graphDetail, starEvidence,
   } = props;
   const [newProp, setNewProp] = useState('');
 
@@ -282,6 +335,79 @@ export default function Inspector(props: InspectorProps) {
                 return <div className="muted">No initial states — mark one to check all paths.</div>;
             }
           })()}
+          {graphDetail && (
+            <>
+              <div className="section-title">Hovered node</div>
+              <div style={{ fontWeight: 600 }}>{graphDetail.title}</div>
+              {graphDetail.lines.map((l, i) => <div key={i} className="muted">{l}</div>)}
+            </>
+          )}
+        </div>
+      );
+    }
+    if (analysis.entry.logic === 'ctlstar' && analysis.starAst && analysis.starCls) {
+      const { starAst, starCls, starResult } = analysis;
+      const selectedStar = selectedNodeId !== null
+        ? (function find(n: StarNode): StarNode | undefined {
+            if (n.id === selectedNodeId) return n;
+            for (const c of childrenOfStar(n)) { const r = find(c); if (r) return r; }
+          })(starAst)
+        : undefined;
+      const initials = model.states.filter((st) => st.isInitial);
+      return (
+        <div>
+          <div className="section-title">Subformulas — state formulas color the canvas</div>
+          <StarNodeTree node={starAst} depth={0} cls={starCls} selectedNodeId={selectedNodeId}
+            onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          {selectedStar && (
+            <div className="gloss">
+              {starCls.get(selectedStar.id) === 'state'
+                ? GLOSS[selectedStar.kind]
+                : 'path formula — true of paths, not states'}
+            </div>
+          )}
+          {analysis.starTooLarge && (
+            <div className="hint">⚠ automaton exceeds 500 states — simplify the formula.</div>
+          )}
+          {starResult && selectedStar && (selectedStar.kind === 'A' || selectedStar.kind === 'E') && (
+            <>
+              <div className="section-title">This quantifier per initial state</div>
+              {initials.map((st) => (
+                <div key={st.id} className="muted">
+                  {starResult.sat.get(selectedStar.id)!.has(st.id) ? '✓' : '✗'} {st.name}
+                </div>
+              ))}
+            </>
+          )}
+          {starResult && (
+            <>
+              <div className="section-title">Verdict</div>
+              {initials.length === 0 && <div className="muted">No initial states — mark one.</div>}
+              {initials.map((st) => (
+                <div key={st.id} className="muted">
+                  {starResult.sat.get(starAst.id)!.has(st.id) ? '✓' : '✗'} {st.name}
+                </div>
+              ))}
+            </>
+          )}
+          {starResult && starResult.deadlocks.length > 0 && (
+            <>
+              <div className="section-title">Warnings</div>
+              <div className="hint">
+                ⚠ Deadlock state(s): {starResult.deadlocks.map((d) => stateById(model, d)?.name ?? d).join(', ')}.
+                Only infinite paths count: A-quantified formulas hold vacuously at deadlocks, and
+                E-quantified formulas are false there.
+              </div>
+            </>
+          )}
+          {starEvidence && (
+            <>
+              <div className="section-title">Evidence</div>
+              <button onClick={() => onLoadCounterexample(starEvidence.lasso)}>
+                Load {starEvidence.kind} as trace
+              </button>
+            </>
+          )}
           {graphDetail && (
             <>
               <div className="section-title">Hovered node</div>

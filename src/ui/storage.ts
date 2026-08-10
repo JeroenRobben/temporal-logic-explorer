@@ -71,7 +71,7 @@ export function validateSavedState(x: unknown): x is SavedState {
   if (!(o.formulas as unknown[]).every((f) => {
     const fe = f as Record<string, unknown>;
     return typeof fe.id === 'string' && typeof fe.text === 'string'
-      && (fe.logic === undefined || fe.logic === 'ctl' || fe.logic === 'ltl');
+      && (fe.logic === undefined || fe.logic === 'ctl' || fe.logic === 'ltl' || fe.logic === 'ctlstar');
   })) return false;
   if (o.trace !== undefined && o.trace !== null) {
     const tr = o.trace as Record<string, unknown>;

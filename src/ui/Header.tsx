@@ -51,7 +51,9 @@ export default function Header({
           onClick={() => onEntryLogic('ltl')} title="New formulas are LTL (evaluated on the trace)">LTL</button>
         <button className={`tab ${entryLogic === 'ctl' ? 'active' : ''}`}
           onClick={() => onEntryLogic('ctl')} title="New formulas are CTL (evaluated on the structure)">CTL</button>
-        <button className="tab" disabled title="Coming later">CTL*</button>
+        <button className={`tab ${entryLogic === 'ctlstar' ? 'active' : ''}`}
+          onClick={() => onEntryLogic('ctlstar')}
+          title="New formulas are CTL* (path quantifiers over arbitrary path formulas)">CTL*</button>
       </div>
       <div className="spacer" />
       <button onClick={onUndo} disabled={!canUndo} title="Ctrl+Z">↩ Undo</button>

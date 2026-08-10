@@ -8,6 +8,9 @@ import { Lasso, validateLasso, validatePrefix } from '../core/trace';
 import { AllPathsResult, checkLTLAllPaths } from '../core/ltl-allpaths';
 import { findEvidence } from '../core/evidence';
 import { forceLayout } from '../core/layout';
+import { parseCTLStar, classify } from '../core/ctlstar-parser';
+import { checkCTLStar, findStarEvidence, CTLStarResult } from '../core/ctlstar-checker';
+import { AutomatonTooLarge } from '../core/buchi';
 import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
 import { colorForNode } from './colors';
 import { loadSaved, save, SavedState } from './storage';
@@ -131,6 +134,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formulas, structKey]);
 
+  const starMap = useMemo(() => {
+    const m = new Map<string, CTLStarResult | 'too-large'>();
+    for (const f of formulas) {
+      if (f.logic !== 'ctlstar') continue;
+      try {
+        m.set(f.id, checkCTLStar(model, parseCTLStar(f.text)));
+      } catch (e) {
+        if (e instanceof AutomatonTooLarge) m.set(f.id, 'too-large');
+        else if (!(e instanceof ParseError)) throw e;
+      }
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formulas, structKey]);
+
   const analyses: Analysis[] = useMemo(() =>
     formulas.map((entry) => {
       try {
@@ -143,6 +161,15 @@ export default function App() {
             verdict: ltlRows ? ltlRows.get(ltlAst.id)![0] : null,
           };
         }
+        if (entry.logic === 'ctlstar') {
+          const starAst = parseCTLStar(entry.text);
+          const starCls = classify(starAst);
+          const cached = starMap.get(entry.id);
+          if (cached === 'too-large') {
+            return { entry, starAst, starCls, starTooLarge: true, verdict: null };
+          }
+          return { entry, starAst, starCls, starResult: cached, verdict: cached ? cached.verdict : null };
+        }
         const ast = parseCTL(entry.text);
         const record = checkCTL(model, ast);
         return { entry, ast, record, verdict: record.verdict };
@@ -150,7 +177,7 @@ export default function App() {
         if (e instanceof ParseError) return { entry, error: e, verdict: null };
         throw e;
       }
-    }), [formulas, model, completeLasso, allPathsMap]);
+    }), [formulas, model, completeLasso, allPathsMap, starMap]);
 
   const selectedFormulaId = selection?.kind === 'formula' ? selection.id : null;
   const selectedAnalysis = analyses.find((a) => a.entry.id === selectedFormulaId) ?? null;
@@ -221,6 +248,10 @@ export default function App() {
   }, [graphable, graphHover, viewTab, model]);
 
   const highlight: Highlight | null = useMemo(() => {
+    if (activeAnalysis?.starResult && selectedNodeId !== null) {
+      const s = activeAnalysis.starResult.sat.get(selectedNodeId);
+      return s ? { sat: s, fresh: new Set<string>(), color: colorForNode(selectedNodeId) } : null;
+    }
     if (!activeAnalysis?.record || selectedNodeId === null) return null;
     const nr = activeAnalysis.record.results.get(selectedNodeId);
     if (!nr) return null;
@@ -240,6 +271,11 @@ export default function App() {
     const from = initials.find((s) => !rootSat.has(s.id)) ?? initials[0];
     return from ? findEvidence(model, record, ast, from.id) : null;
   }, [showEvidence, activeAnalysis, model]);
+
+  const starEvidence = useMemo(() => {
+    if (!activeAnalysis?.starResult || !activeAnalysis.starAst) return null;
+    return findStarEvidence(model, activeAnalysis.starAst, activeAnalysis.starResult);
+  }, [activeAnalysis, model]);
 
   const deadlocks = useMemo(() => new Set(deadlockStates(model)), [model]);
 
@@ -479,6 +515,7 @@ export default function App() {
             onDeleteTransition={deleteTransition}
             onLoadCounterexample={loadCounterexample}
             graphDetail={graphDetail}
+            starEvidence={starEvidence}
           />
         </div>
       </div>

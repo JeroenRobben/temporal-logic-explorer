@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { pretty as prettyCTL } from '../core/ctl-parser';
 import { pretty as prettyLTL } from '../core/ltl-parser';
-import { Analysis, Logic } from './types';
+import { pretty as prettyStar } from '../core/ctlstar-parser';
+import { Analysis, Logic, LOGIC_LABEL } from './types';
 
 interface FormulaPanelProps {
   analyses: Analysis[];
@@ -28,7 +29,7 @@ export default function FormulaPanel({
     <div>
       <input
         className="formula-input"
-        placeholder={`Add ${entryLogic.toUpperCase()} formula — press Enter`}
+        placeholder={`Add ${LOGIC_LABEL[entryLogic]} formula — press Enter`}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
@@ -36,11 +37,15 @@ export default function FormulaPanel({
       <div style={{ marginTop: 8 }}>
         {analyses.map((a) => {
           const verdict = a.error ? '⚠'
+            : a.starTooLarge ? '⚠'
             : a.verdict === true ? '✓'
             : a.verdict === false ? '✗' : '–';
           const cls = a.verdict === true ? 'true'
             : a.verdict === false ? 'false' : 'none';
-          const text = a.ast ? prettyCTL(a.ast) : a.ltlAst ? prettyLTL(a.ltlAst) : a.entry.text;
+          const text = a.ast ? prettyCTL(a.ast)
+            : a.ltlAst ? prettyLTL(a.ltlAst)
+            : a.starAst ? prettyStar(a.starAst)
+            : a.entry.text;
           const ap = a.entry.logic === 'ltl' && !a.error ? a.allPaths : undefined;
           const apMark = !ap ? null
             : ap.kind === 'holds' ? { text: '∀✓', cls: 'true', title: 'holds on all infinite paths' }
@@ -52,10 +57,12 @@ export default function FormulaPanel({
               key={a.entry.id}
               className={`formula-row ${a.entry.id === selectedFormulaId ? 'selected' : ''}`}
               onClick={() => onSelect(a.entry.id)}
-              title={a.verdict === null && !a.error && a.entry.logic === 'ltl'
+              title={a.starTooLarge
+                ? 'automaton too large — simplify the formula'
+                : a.verdict === null && !a.error && a.entry.logic === 'ltl'
                 ? 'Build a trace to evaluate LTL formulas' : undefined}
             >
-              <span className={`badge ${a.entry.logic}`}>{a.entry.logic.toUpperCase()}</span>
+              <span className={`badge ${a.entry.logic}`}>{LOGIC_LABEL[a.entry.logic]}</span>
               <span className={`verdict ${cls}`} title={a.entry.logic === 'ltl' ? 'on the current trace' : undefined}>{verdict}</span>
               {apMark && <span className={`verdict ${apMark.cls}`} title={apMark.title}>{apMark.text}</span>}
               <span className="text">{text}</span>

@@ -395,7 +395,7 @@ export default function App() {
       : swapQuantifier(entry.logic, entry.text, selectedNodeId);
     if (result === null) {
       setGestureNotice(action.type === 'wrap'
-        ? 'That wrap would make the formula invalid here (CTL* roots need a path quantifier).'
+        ? `That wrap is not valid here.${entry.logic === 'ctlstar' ? ' (CTL* roots need a path quantifier.)' : ''}`
         : 'Nothing to swap on this node.');
       return;
     }

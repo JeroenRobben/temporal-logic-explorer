@@ -21,7 +21,7 @@ interface FormulaPanelProps {
 export default function FormulaPanel({
   analyses, selectedFormulaId, onSelect, onAdd, onRemove, entryLogic, model, onUpdate, onSwitchLogic,
 }: FormulaPanelProps) {
-  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; text: string; logic: Logic } | null>(null);
 
   return (
     <div>
@@ -73,7 +73,11 @@ export default function FormulaPanel({
               <button
                 className="remove"
                 title="Edit"
-                onClick={(e) => { e.stopPropagation(); setEditing({ id: a.entry.id, text: a.entry.text }); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditing({ id: a.entry.id, text: a.entry.text, logic: a.entry.logic });
+                  onSwitchLogic(a.entry.logic);
+                }}
               >✎</button>
               <button
                 className="remove"

@@ -15,7 +15,7 @@ type ParsedState = { ast: CTLNode | LTLNode | StarNode } | { error: ParseError }
 interface ComposerProps {
   logic: Logic;
   model: KripkeStructure;
-  editing: { id: string; text: string } | null;
+  editing: { id: string; text: string; logic: Logic } | null;
   onSave: (text: string) => void;
   onCancelEdit: () => void;
   onSwitchLogic: (l: Logic) => void;
@@ -111,17 +111,23 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
 
   const hasHoles = draft.includes(HOLE);
 
+  // While editing, the row being edited carries its own logic, which may
+  // differ from the header tab's current entry logic — validate and render
+  // against the ROW's logic so an LTL row edited from the CTL tab still
+  // parses (and saves) as LTL.
+  const effLogic: Logic = editing?.logic ?? logic;
+
   const parsed = useMemo<ParsedState>(() => {
     const text = draft.trim();
     if (text === '' || hasHoles) return null;
     try {
-      const ast = logic === 'ctl' ? parseCTL(text) : logic === 'ltl' ? parseLTL(text) : parseCTLStar(text);
+      const ast = effLogic === 'ctl' ? parseCTL(text) : effLogic === 'ltl' ? parseLTL(text) : parseCTLStar(text);
       return { ast };
     } catch (e) {
       if (e instanceof ParseError) return { error: e };
       throw e;
     }
-  }, [draft, logic, hasHoles]);
+  }, [draft, effLogic, hasHoles]);
 
   function selectHole(from: number, backwards = false) {
     const positions: number[] = [];
@@ -144,13 +150,15 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
     const before = draft.slice(0, start);
     const after = draft.slice(end);
     const needsLeft = before !== '' && !/[\s([]$/.test(before);
-    const glued = (needsLeft ? ' ' : '') + text;
+    const needsRight = after !== '' && !/^[\s)\]]/.test(after) && !text.endsWith(' ');
+    const glued = (needsLeft ? ' ' : '') + text + (needsRight ? ' ' : '');
     const next = before + glued + after;
     if (template) {
       const holeInInsert = glued.indexOf(HOLE);
       pendingSelect.current = { start: start + holeInInsert, end: start + holeInInsert + 1 };
     } else {
-      pendingSelect.current = { start: start + glued.length, end: start + glued.length };
+      const caret = start + (needsLeft ? 1 : 0) + text.length;
+      pendingSelect.current = { start: caret, end: caret };
     }
     setDraft(next);
   }
@@ -182,23 +190,23 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
   const crossLogicTarget: Logic | null = useMemo(() => {
     if (!parsed || !('error' in parsed)) return null;
     const blob = `${parsed.error.message} ${parsed.error.hint ?? ''}`;
-    if (logic !== 'ctl' && /CTL(?!\*)/.test(blob) && /bracket|path quantifier — that's CTL/.test(blob)) return 'ctl';
-    if (logic === 'ctl' && /path formula/.test(blob)) return 'ltl';
+    if (effLogic !== 'ctl' && /CTL(?!\*)/.test(blob) && /bracket|path quantifier — that's CTL/.test(blob)) return 'ctl';
+    if (effLogic === 'ctl' && /path formula/.test(blob)) return 'ltl';
     return null;
-  }, [parsed, logic]);
+  }, [parsed, effLogic]);
 
   return (
     <div className="composer">
       {editing && <div className="editing-banner">editing — Enter saves, Esc cancels</div>}
       <div className="composer-input-wrap">
         <div className="composer-highlight" ref={hlRef} aria-hidden="true">
-          {tokenize(draft, logic).map((t, i) => (
+          {tokenize(draft, effLogic).map((t, i) => (
             <span key={i} className={t.cls === 'space' ? undefined : `tok-${t.cls}`}>{t.text}</span>
           ))}
         </div>
         <textarea
           ref={taRef} rows={1} className="composer-textarea" spellCheck={false}
-          placeholder={`Add ${LOGIC_LABEL[logic]} formula — press Enter`}
+          placeholder={`Add ${LOGIC_LABEL[effLogic]} formula — press Enter`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
@@ -226,7 +234,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
                       setDraft(fix.replacement);
                     }}>{fix.label}</button>
                   )}
-                  {crossLogicTarget && !fix && (
+                  {crossLogicTarget && !fix && !editing && (
                     <button className="fix-btn" onClick={() => onSwitchLogic(crossLogicTarget)}>
                       Switch to {LOGIC_LABEL[crossLogicTarget]}
                     </button>
@@ -237,7 +245,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
           }
           const ast = parsed && 'ast' in parsed ? parsed.ast : null;
           if (ast) {
-            return <span className="ok">✓ {prettyOf(logic, ast)} — “{glossify(ast, logic)}”</span>;
+            return <span className="ok">✓ {prettyOf(effLogic, ast)} — “{glossify(ast, effLogic)}”</span>;
           }
           return null;
         })()}
@@ -249,7 +257,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
         {allPropositions(model).length === 0 && <span className="muted">no propositions yet</span>}
       </div>
       <div className="composer-row">
-        {palette(logic).map((entry) => (
+        {palette(effLogic).map((entry) => (
           <button key={entry.label} className="op-btn" title={entry.gloss}
             onClick={() => insertAtCaret(entry.insert, entry.template)}>
             {entry.label}

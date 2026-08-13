@@ -83,4 +83,23 @@ describe('Composer', () => {
     fireEvent.keyDown(composerInput(), { key: 'Escape' }); // cancel second edit
     expect((composerInput() as HTMLTextAreaElement).value).toBe(''); // pre-edit draft (empty), not 'AF zzz'
   });
+
+  it("editing a row uses the row's logic regardless of the current tab", () => {
+    render(<App />);
+    // default tab is CTL; edit the LTL row 'G F r'
+    const row = [...document.querySelectorAll('.formula-row')].find((r) => r.querySelector('.badge.ltl'))!;
+    fireEvent.click(row.querySelector('[title="Edit"]')!);
+    const ta = composerInput() as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'AG w' } });
+    expect(screen.getByText(/that's CTL, not LTL/)).toBeTruthy(); // validated as LTL
+  });
+
+  it('insertion adds a space before a following identifier', () => {
+    render(<App />);
+    const ta = composerInput() as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'p' } });
+    ta.setSelectionRange(0, 0);
+    fireEvent.click([...document.querySelectorAll('.prop-chip')].find((c) => c.textContent === 'r')!);
+    expect(ta.value).toBe('r p');
+  });
 });

@@ -102,3 +102,34 @@ describe('pretty (LTL)', () => {
     }
   });
 });
+
+describe('ParseError.fix', () => {
+  it('glued FG offers a spacing fix that reparses', () => {
+    try {
+      parseLTL('FG p');
+      expect.fail('should throw');
+    } catch (e) {
+      const fix = (e as ParseError).fix!;
+      expect(fix.replacement).toBe('F G p');
+      expect(() => parseLTL(fix.replacement)).not.toThrow();
+    }
+  });
+  it('CTL-quantified token offers a drop-the-quantifier fix', () => {
+    try {
+      parseLTL('AG p');
+      expect.fail('should throw');
+    } catch (e) {
+      const fix = (e as ParseError).fix!;
+      expect(fix.replacement).toBe('G p');
+      expect(() => parseLTL(fix.replacement)).not.toThrow();
+    }
+  });
+  it('fix preserves surrounding text', () => {
+    try {
+      parseLTL('p & FG q');
+      expect.fail('should throw');
+    } catch (e) {
+      expect((e as ParseError).fix!.replacement).toBe('p & F G q');
+    }
+  });
+});

@@ -123,3 +123,44 @@ describe('pretty (CTL*)', () => {
     }
   });
 });
+
+describe('ParseError.fix', () => {
+  it('glued CTL token offers a spacing fix', () => {
+    try {
+      parseCTLStar('AG p');
+      expect.fail('should throw');
+    } catch (e) {
+      const fix = (e as ParseError).fix!;
+      expect(fix.replacement).toBe('A G p');
+      expect(() => parseCTLStar(fix.replacement)).not.toThrow();
+    }
+  });
+  it('bracket syntax offers a parenthesized rewrite', () => {
+    try {
+      parseCTLStar('A[p U q]');
+      expect.fail('should throw');
+    } catch (e) {
+      const fix = (e as ParseError).fix!;
+      expect(fix.replacement).toBe('A (p U q)');
+      expect(() => parseCTLStar(fix.replacement)).not.toThrow();
+    }
+  });
+  it('bracket fix handles nested brackets', () => {
+    try {
+      parseCTLStar('E[p U A[q U r]]');
+      expect.fail('should throw');
+    } catch (e) {
+      const fix = (e as ParseError).fix!;
+      // outer bracket rewritten; inner remains (will error again with its own fix on next parse)
+      expect(fix.replacement).toBe('E (p U A[q U r])');
+    }
+  });
+  it('glued LTL token offers a spacing fix', () => {
+    try {
+      parseCTLStar('A FG p');
+      expect.fail('should throw');
+    } catch (e) {
+      expect((e as ParseError).fix!.replacement).toBe('A F G p');
+    }
+  });
+});

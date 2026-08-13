@@ -61,7 +61,7 @@ class Parser {
   private depth = 0;
   /** node id → source position of the token that produced it */
   readonly posOf = new Map<number, number>();
-  constructor(private tokens: Token[]) {}
+  constructor(private tokens: Token[], private input: string) {}
 
   private peek(offset = 0): Token {
     return this.tokens[Math.min(this.i + offset, this.tokens.length - 1)];
@@ -71,6 +71,9 @@ class Parser {
     const t = this.peek();
     if (t.kind !== kind) throw new ParseError(`Expected ${what}`, t.pos);
     return this.next();
+  }
+  private replaceToken(t: Token, replacement: string): string {
+    return this.input.slice(0, t.pos) + replacement + this.input.slice(t.pos + t.text.length);
   }
   private node<T extends Omit<StarNode, 'id'>>(n: T, pos: number): StarNode {
     const built = { id: this.nextId++, ...n } as StarNode;
@@ -153,11 +156,20 @@ class Parser {
         }
         if (QUANTIFIERS.has(t.text)) {
           if (this.peek(1).kind === 'lbracket') {
-            throw new ParseError(
-              `'${t.text}[…]' is CTL bracket syntax`,
-              t.pos,
-              `In CTL* write ${t.text} (p U q).`,
-            );
+            const open = this.peek(1).pos;
+            let depth = 0;
+            let close = -1;
+            for (let j = open; j < this.input.length; j++) {
+              if (this.input[j] === '[') depth++;
+              else if (this.input[j] === ']') { depth--; if (depth === 0) { close = j; break; } }
+            }
+            const fix = close !== -1
+              ? {
+                  label: `Use parentheses: ${t.text} (…)`,
+                  replacement: this.input.slice(0, open) + ' (' + this.input.slice(open + 1, close) + ')' + this.input.slice(close + 1),
+                }
+              : undefined;
+            throw new ParseError(`'${t.text}[…]' is CTL bracket syntax`, t.pos, `In CTL* write ${t.text} (p U q).`, fix);
           }
           if (this.startsFormula(this.peek(1))) {
             this.next();
@@ -170,6 +182,7 @@ class Parser {
             `'${t.text}' — in CTL* the quantifier and operator are separate`,
             t.pos,
             `Write ${t.text[0]} ${t.text[1]} p.`,
+            { label: `Insert space: ${t.text[0]} ${t.text[1]}`, replacement: this.replaceToken(t, `${t.text[0]} ${t.text[1]}`) },
           );
         }
         if (GLUED_LTL.test(t.text) && this.startsFormula(this.peek(1))) {
@@ -177,6 +190,7 @@ class Parser {
             `'${t.text}' — operators need spaces between them`,
             t.pos,
             `Write ${t.text.split('').join(' ')} p.`,
+            { label: `Insert spaces: ${t.text.split('').join(' ')}`, replacement: this.replaceToken(t, t.text.split('').join(' ')) },
           );
         }
       }
@@ -245,7 +259,7 @@ export function classify(root: StarNode): Map<number, 'state' | 'path'> {
 }
 
 export function parseCTLStar(input: string): StarNode {
-  const parser = new Parser(lex(input));
+  const parser = new Parser(lex(input), input);
   const root = parser.parse();
   const cls = classify(root);
   if (cls.get(root.id) === 'path') {

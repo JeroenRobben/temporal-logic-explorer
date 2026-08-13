@@ -57,7 +57,7 @@ class Parser {
   private i = 0;
   private nextId = 0;
   private depth = 0;
-  constructor(private tokens: Token[]) {}
+  constructor(private tokens: Token[], private input: string) {}
 
   private peek(offset = 0): Token {
     return this.tokens[Math.min(this.i + offset, this.tokens.length - 1)];
@@ -67,6 +67,9 @@ class Parser {
     const t = this.peek();
     if (t.kind !== kind) throw new ParseError(`Expected ${what}`, t.pos);
     return this.next();
+  }
+  private replaceToken(t: Token, replacement: string): string {
+    return this.input.slice(0, t.pos) + replacement + this.input.slice(t.pos + t.text.length);
   }
   private node<T extends Omit<LTLNode, 'id'>>(n: T): LTLNode {
     return { id: this.nextId++, ...n } as LTLNode;
@@ -151,6 +154,9 @@ class Parser {
             `'${t.text}' uses a path quantifier — that's CTL, not LTL`,
             t.pos,
             'In LTL, drop the A/E: write G p, F p, X p, or p U q.',
+            /^[AE][XFG]$/.test(t.text)
+              ? { label: `Drop the quantifier: ${t.text[1]} …`, replacement: this.replaceToken(t, t.text[1]) }
+              : undefined,
           );
         }
         if (/^[XFG]{2,}$/.test(t.text) && this.startsFormula(this.peek(1))) {
@@ -158,6 +164,7 @@ class Parser {
             `'${t.text}' — LTL operators need spaces between them`,
             t.pos,
             `Write ${t.text.split('').join(' ')} p.`,
+            { label: `Insert spaces: ${t.text.split('').join(' ')}`, replacement: this.replaceToken(t, t.text.split('').join(' ')) },
           );
         }
       }
@@ -187,7 +194,7 @@ class Parser {
 }
 
 export function parseLTL(input: string): LTLNode {
-  return new Parser(lex(input)).parse();
+  return new Parser(lex(input), input).parse();
 }
 
 const PREC: Record<string, number> = {

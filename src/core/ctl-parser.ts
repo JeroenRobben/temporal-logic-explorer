@@ -14,7 +14,13 @@ export type CTLNode =
   | { id: number; kind: 'EU' | 'AU'; left: CTLNode; right: CTLNode };
 
 export class ParseError extends Error {
-  constructor(message: string, public pos: number, public hint?: string) {
+  constructor(
+    message: string,
+    public pos: number,
+    public hint?: string,
+    /** Machine-applicable one-click rewrite of the WHOLE input, when deterministic. */
+    public fix?: { label: string; replacement: string },
+  ) {
     super(message);
     this.name = 'ParseError';
   }

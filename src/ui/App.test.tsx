@@ -281,4 +281,33 @@ describe('App', () => {
     fireEvent.click(document.querySelectorAll('.node-row')[0]);
     expect(screen.getByText('Automaton')).toBeTruthy();
   });
+
+  it('Tree tab renders the depth-3 unfolding of the default example', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('Tree'));
+    expect(document.querySelectorAll('.tree-node').length).toBe(10); // 1+2+3+4
+    expect(screen.getByText(/10 nodes/)).toBeTruthy();
+  });
+
+  it('selecting a CTL subformula colors tree nodes', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('AG EF r'));
+    fireEvent.click(screen.getByText('Tree'));
+    // click the EF r node row in the inspector tree (row index 1: AG, EF, r)
+    fireEvent.click(document.querySelectorAll('.node-row')[1]);
+    // EF r holds everywhere → every tree node gets a ring
+    expect(document.querySelectorAll('.tree-ring').length).toBe(10);
+  });
+
+  it('a recorded trace draws as a violet branch on the tree', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('⏺ Build trace'));
+    const svg = document.querySelector('svg')!;
+    for (const [x, y, name] of [[160, 140, 'work'], [380, 140, 'error'], [270, 320, 'reset'], [160, 140, 'work']] as const) {
+      firePointer('pointerDown', within(svg as unknown as HTMLElement).getByText(name), { clientX: x, clientY: y });
+      firePointer('pointerUp', svg, { clientX: x, clientY: y });
+    }
+    fireEvent.click(screen.getByText('Tree'));
+    expect(document.querySelectorAll('.tree-branch').length).toBeGreaterThan(0);
+  });
 });

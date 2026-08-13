@@ -40,6 +40,12 @@ structures — built to learn CTL (and eventually LTL and CTL*) by seeing it.
   successor buttons. Canvas clicks close the loop when you revisit a state; the
   timeline's → buttons instead pass through it (for traces that visit a state
   twice before looping).
+- **Tree (canvas tab):** unfolds the computation tree from the initial state(s)
+  — depth slider 1–6, ⟳ marks where a branch re-enters a visited state. The
+  selected state-subformula colors tree nodes; the active trace and the active
+  counterexample/witness each light up as a root-downward branch (↓⟳ where they
+  continue beyond the shown depth) — a trace is one branch of this tree, which
+  is exactly the LTL-vs-branching story.
 
 Everything is checked live on every edit and saved to localStorage.
 

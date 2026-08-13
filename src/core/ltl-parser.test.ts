@@ -87,4 +87,18 @@ describe('pretty (LTL)', () => {
     expect(pretty(parseLTL('!p & q'))).toBe('¬p ∧ q');
     expect(pretty(parseLTL('G (p -> F q)'))).toBe('G (p → F q)');
   });
+
+  it('preserves grouping of low-precedence operators nested under U', () => {
+    for (const f of ['(p & q) U r', 'p U (q & r)', '(p | q) U r', 'p U (q -> r)', '(p <-> q) U r']) {
+      const ast = parseLTL(f);
+      expect(kinds(parseLTL(pretty(ast)))).toBe(kinds(ast));
+    }
+  });
+
+  it('pretty is idempotent', () => {
+    for (const src of ['p <-> (q <-> r)', '(p <-> q) <-> r', '(p & q) U r', 'G (p -> F q)', 'F p U q', 'p U q U r', '!p U (q | r)']) {
+      const p1 = pretty(parseLTL(src));
+      expect(pretty(parseLTL(p1))).toBe(p1);
+    }
+  });
 });

@@ -102,4 +102,24 @@ describe('pretty (CTL*)', () => {
     expect(pretty(parseCTLStar('A G (E F p)'))).toBe('A G E F p');
     expect(pretty(parseCTLStar('p & A F q'))).toBe('p ∧ A F q');
   });
+
+  it('preserves grouping of low-precedence operators nested under U', () => {
+    for (const f of [
+      'A ((p & q) U r)', 'A (p U (q & r))', 'A ((p | q) U r)',
+      'A (p U (q -> r))', 'A ((p <-> q) U r)',
+    ]) {
+      const ast = parseCTLStar(f);
+      expect(kinds(parseCTLStar(pretty(ast)))).toBe(kinds(ast));
+    }
+  });
+
+  it('pretty is idempotent', () => {
+    for (const src of [
+      'p <-> (q <-> r)', '(p <-> q) <-> r', 'A ((p & q) U r)',
+      'A G (p -> F q)', 'E (F p U q)', 'A (p U q U r)', 'A (!p U (q | r))',
+    ]) {
+      const p1 = pretty(parseCTLStar(src));
+      expect(pretty(parseCTLStar(p1))).toBe(p1);
+    }
+  });
 });

@@ -213,7 +213,7 @@ function prettyPrec(n: CTLNode, parent: number): string {
     case 'and': return wrap(`${prettyPrec(n.left, p)} ∧ ${prettyPrec(n.right, p)}`);
     case 'or': return wrap(`${prettyPrec(n.left, p)} ∨ ${prettyPrec(n.right, p)}`);
     case 'implies': return wrap(`${prettyPrec(n.left, p + 1)} → ${prettyPrec(n.right, p)}`);
-    case 'iff': return wrap(`${prettyPrec(n.left, p + 1)} ↔ ${prettyPrec(n.right, p)}`);
+    case 'iff': return wrap(`${prettyPrec(n.left, p)} ↔ ${prettyPrec(n.right, p)}`);
     case 'EU': return `E[${prettyPrec(n.left, 0)} U ${prettyPrec(n.right, 0)}]`;
     case 'AU': return `A[${prettyPrec(n.left, 0)} U ${prettyPrec(n.right, 0)}]`;
     default:

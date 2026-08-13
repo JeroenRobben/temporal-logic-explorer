@@ -211,9 +211,9 @@ function prettyPrec(n: LTLNode, parent: number): string {
     case 'and': return wrap(`${prettyPrec(n.left, p)} ∧ ${prettyPrec(n.right, p)}`);
     case 'or': return wrap(`${prettyPrec(n.left, p)} ∨ ${prettyPrec(n.right, p)}`);
     case 'implies': return wrap(`${prettyPrec(n.left, p + 1)} → ${prettyPrec(n.right, p)}`);
-    case 'iff': return wrap(`${prettyPrec(n.left, p + 1)} ↔ ${prettyPrec(n.right, p)}`);
+    case 'iff': return wrap(`${prettyPrec(n.left, p)} ↔ ${prettyPrec(n.right, p)}`);
     // U is always parenthesized to sidestep precedence ambiguity in output
-    case 'U': return `(${prettyPrec(n.left, 0)} U ${prettyPrec(n.right, 0)})`;
+    case 'U': return `(${prettyPrec(n.left, PREC.U)} U ${prettyPrec(n.right, PREC.U)})`;
     default: return wrap(`${n.kind} ${prettyPrec(n.child, p)}`);
   }
 }

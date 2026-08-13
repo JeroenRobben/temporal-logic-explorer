@@ -93,4 +93,11 @@ describe('pretty', () => {
     expect(pretty(parseCTL('p -> q'))).toBe('p → q');
     expect(pretty(parseCTL('AG (p -> AF q)'))).toBe('AG (p → AF q)');
   });
+
+  it('pretty is idempotent', () => {
+    for (const src of ['p <-> (q <-> r)', '(p <-> q) <-> r', 'p & (q & r)', 'p -> (q -> r)', '(p -> q) -> r', 'AG (p -> EF q)', 'E[p U A[q U r]]', 'AG (p <-> (q <-> r))', 'E[(p & q) U (r | p)]']) {
+      const p1 = pretty(parseCTL(src));
+      expect(pretty(parseCTL(p1))).toBe(p1);
+    }
+  });
 });

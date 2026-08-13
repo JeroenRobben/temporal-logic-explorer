@@ -290,8 +290,8 @@ function prettyPrec(n: StarNode, parent: number): string {
     case 'and': return wrap(`${prettyPrec(n.left, p)} ∧ ${prettyPrec(n.right, p)}`);
     case 'or': return wrap(`${prettyPrec(n.left, p)} ∨ ${prettyPrec(n.right, p)}`);
     case 'implies': return wrap(`${prettyPrec(n.left, p + 1)} → ${prettyPrec(n.right, p)}`);
-    case 'iff': return wrap(`${prettyPrec(n.left, p + 1)} ↔ ${prettyPrec(n.right, p)}`);
-    case 'U': return `(${prettyPrec(n.left, 0)} U ${prettyPrec(n.right, 0)})`;
+    case 'iff': return wrap(`${prettyPrec(n.left, p)} ↔ ${prettyPrec(n.right, p)}`);
+    case 'U': return `(${prettyPrec(n.left, PREC.U)} U ${prettyPrec(n.right, PREC.U)})`;
     case 'A': case 'E': {
       // Parenthesize binary path children so A (p U q) round-trips unambiguously.
       // U children self-parenthesize (see the U case above), so they are excluded

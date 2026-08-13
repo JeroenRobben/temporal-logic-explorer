@@ -22,6 +22,10 @@ export function checkLTLAllPaths(model: KripkeStructure, root: LTLNode): AllPath
     throw e;
   }
   const product = buildProduct(model, automaton);
+  // The recursive Tarjan in findAcceptingLasso can exceed the JS stack on very
+  // deep products (~5000+ DFS depth). Teaching-scale models never approach this;
+  // treat oversized products like oversized automata rather than crashing.
+  if (product.states.length > 4000) return { kind: 'too-large' };
   const lasso = findAcceptingLasso(product);
   if (lasso === null) return { kind: 'holds', automaton, product };
   const byId = new Map(product.states.map((s) => [s.id, s]));

@@ -127,6 +127,33 @@ describe('checkCTLStar — beyond CTL', () => {
   });
 });
 
+describe('deadlock caveat: CTL* infinite-path semantics vs CTL maximal-path semantics (audit C)', () => {
+  // s0[r] initial, s1[p] deadlock, s2[p,q]; the only transition is s2 -> s0
+  // (so s0 is ALSO a deadlock: nothing leaves it).
+  const deadlocky: KripkeStructure = {
+    states: [
+      { id: 's0', name: 's0', propositions: ['r'], isInitial: true, x: 0, y: 0 },
+      { id: 's1', name: 's1', propositions: ['p'], isInitial: false, x: 0, y: 0 },
+      { id: 's2', name: 's2', propositions: ['p', 'q'], isInitial: false, x: 0, y: 0 },
+    ],
+    transitions: [{ from: 's2', to: 's0' }],
+  };
+  it('CTL (maximal-path) AG EF r sat = {s0, s2}; CTL* (infinite-path) A is vacuous everywhere', () => {
+    // Under CTL's maximal-path semantics, finite paths ending at a deadlock
+    // count: EF r = {s0, s2} (s2 -> s0 reaches r; s1 has no path to r at
+    // all). AG (EF r): s0 and s1 are deadlocks, so AG holds there vacuously
+    // over the trivial one-state maximal path — s0's own EF-r membership
+    // still gates it (true), s1's doesn't (false). s2's only maximal path is
+    // s2 -> s0, both members of EF r. Net: {s0, s2}.
+    expect(ctlSat(deadlocky, 'AG (EF r)')).toEqual(['s0', 's2']);
+
+    // Under CTL*'s infinite-path semantics, NO infinite path exists anywhere
+    // in this model (every state eventually deadlocks), so "A ψ" (no path
+    // violates ψ) is vacuously true at every state regardless of ψ.
+    expect(starSat(deadlocky, 'A G (E F r)')).toEqual(['s0', 's1', 's2']);
+  });
+});
+
 describe('findStarEvidence', () => {
   it('failing root A yields a counterexample lasso that falsifies ψ', () => {
     const root = parseCTLStar('A (G F r)');

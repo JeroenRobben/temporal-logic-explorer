@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { parseLTL } from './ltl-parser';
 import { toNNF, nnfKey, ltlToBuchi, AutomatonTooLarge, BuchiAutomaton } from './buchi';
+import { KripkeStructure } from './kripke';
+import { buildProduct } from './product';
+import { findAcceptingLasso } from './emptiness';
 
 const nnf = (s: string) => nnfKey(toNNF(parseLTL(s)));
 
@@ -80,5 +83,63 @@ describe('ltlToBuchi', () => {
   it('obligations re-sugar F and G', () => {
     const aut = ltlToBuchi(parseLTL('G F p'));
     expect(aut.states.some((q) => q.obligations.some((o) => o.includes('G F p')))).toBe(true);
+  });
+});
+
+function wordToModel(letters: string[][], loopIndex: number): KripkeStructure {
+  const n = letters.length;
+  return {
+    states: letters.map((propositions, i) => ({
+      id: `w${i}`, name: `w${i}`, propositions, isInitial: i === 0, x: 0, y: 0,
+    })),
+    transitions: letters.map((_, i) => ({
+      from: `w${i}`, to: i + 1 < n ? `w${i + 1}` : `w${loopIndex}`,
+    })),
+  };
+}
+function accepts(aut: BuchiAutomaton, letters: string[][], loopIndex: number): boolean {
+  return findAcceptingLasso(buildProduct(wordToModel(letters, loopIndex), aut)) !== null;
+}
+
+describe('degeneralization with k >= 2 acceptance sets', () => {
+  it('F p & F q requires BOTH untils discharged', () => {
+    const aut = ltlToBuchi(parseLTL('F p & F q'));
+    expect(accepts(aut, [['p']], 0)).toBe(false);
+    expect(accepts(aut, [['q']], 0)).toBe(false);
+    expect(accepts(aut, [[]], 0)).toBe(false);
+    expect(accepts(aut, [['p'], ['q']], 1)).toBe(true);
+  });
+  it('F p & F q & F r rejects every single omission', () => {
+    const aut = ltlToBuchi(parseLTL('F p & F q & F r'));
+    expect(accepts(aut, [['p'], ['q'], ['r']], 2)).toBe(true);
+    expect(accepts(aut, [['p'], ['q'], []], 2)).toBe(false);
+    expect(accepts(aut, [['p'], [], ['r']], 2)).toBe(false);
+    expect(accepts(aut, [[], ['q'], ['r']], 2)).toBe(false);
+    expect(accepts(aut, [['p', 'q', 'r']], 0)).toBe(true);
+  });
+  it('G F p & G F q: the counter must cycle through both sets in the LOOP', () => {
+    const aut = ltlToBuchi(parseLTL('G F p & G F q'));
+    expect(accepts(aut, [['p'], ['q']], 0)).toBe(true);
+    expect(accepts(aut, [['q'], ['p']], 1)).toBe(false);
+    expect(accepts(aut, [['p'], ['q']], 1)).toBe(false);
+    expect(accepts(aut, [['p', 'q'], []], 1)).toBe(false);
+  });
+  it('(p U q) & (q U p) — two distinct untils', () => {
+    const aut = ltlToBuchi(parseLTL('(p U q) & (q U p)'));
+    expect(accepts(aut, [['p', 'q']], 0)).toBe(true);
+    expect(accepts(aut, [['q']], 0)).toBe(false);
+    expect(accepts(aut, [['p']], 0)).toBe(false);
+    expect(accepts(aut, [['p'], ['q']], 1)).toBe(true);
+  });
+  it('G F true & F p keeps a non-empty language', () => {
+    const aut = ltlToBuchi(parseLTL('G F true & F p'));
+    expect(aut.states.some((s) => s.accepting)).toBe(true);
+    expect(accepts(aut, [['p']], 0)).toBe(true);
+    expect(accepts(aut, [[]], 0)).toBe(false);
+  });
+  it('(p U true) & (q U true) & G F p still tracks the real until', () => {
+    const aut = ltlToBuchi(parseLTL('(p U true) & (q U true) & G F p'));
+    expect(accepts(aut, [['p']], 0)).toBe(true);
+    expect(accepts(aut, [['p'], []], 1)).toBe(false);
   });
 });

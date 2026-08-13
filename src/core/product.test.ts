@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { KripkeStructure } from './kripke';
-import { BuchiAutomaton } from './buchi';
+import { BuchiAutomaton, ltlToBuchi } from './buchi';
+import { parseLTL } from './ltl-parser';
 import { buildProduct } from './product';
 
 // Hand-built automaton for F p: q0 (initial) --true--> q0, --p--> q1; q1 (accepting) --true--> q1
@@ -73,5 +74,29 @@ describe('buildProduct', () => {
   it('omitting initialIds keeps the default behavior', () => {
     const prod = buildProduct(k, fpAut);
     expect(prod.states.filter((s) => s.initial).map((s) => s.id)).toEqual(['a×q0']);
+  });
+});
+
+describe('buildProduct initialIds edge cases (audit C)', () => {
+  it('defaults to isInitial when initialIds is omitted', () => {
+    const withDefault = buildProduct(k, fpAut);
+    const explicit = buildProduct(k, fpAut, k.states.filter((s) => s.isInitial).map((s) => s.id));
+    expect(withDefault.states.map((s) => s.id).sort()).toEqual(explicit.states.map((s) => s.id).sort());
+  });
+  it('unknown ids in initialIds are ignored (no seed, no crash)', () => {
+    const prod = buildProduct(k, fpAut, ['a', 'nonexistent']);
+    expect(prod.states.filter((s) => s.initial).map((s) => s.id)).toEqual(['a×q0']);
+  });
+  it('duplicate ids in initialIds do not create duplicate states', () => {
+    const prod = buildProduct(k, fpAut, ['a', 'a']);
+    expect(prod.states.filter((s) => s.modelStateId === 'a').length).toBe(1);
+  });
+  it('automaton-initial seeds whose entryGuard fails on the seed state are dropped', () => {
+    // 'p | q' has two automaton-initial states (entry guards [p] and [q]).
+    // Model state 'a' has neither prop, so both guards fail and no seed
+    // materializes for it.
+    const aut = ltlToBuchi(parseLTL('p | q'));
+    const prod = buildProduct(k, aut, ['a']);
+    expect(prod.states.length).toBe(0);
   });
 });

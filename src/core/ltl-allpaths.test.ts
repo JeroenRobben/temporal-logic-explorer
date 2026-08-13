@@ -70,6 +70,57 @@ describe('checkLTLAllPaths', () => {
   });
 });
 
+describe('oversized product guard (audit C-2)', () => {
+  it('a 4500-state linear-chain product returns too-large without throwing RangeError', () => {
+    const n = 4500;
+    const states = Array.from({ length: n }, (_, i) => ({
+      id: `a${i}`, name: `a${i}`, propositions: ['p'], isInitial: i === 0, x: 0, y: 0,
+    }));
+    const transitions = Array.from({ length: n }, (_, i) => ({
+      from: `a${i}`, to: `a${(i + 1) % n}`,
+    }));
+    const model: KripkeStructure = { states, transitions };
+    expect(() => checkLTLAllPaths(model, parseLTL('G p'))).not.toThrow();
+    expect(checkLTLAllPaths(model, parseLTL('G p')).kind).toBe('too-large');
+  });
+});
+
+describe('too-large propagates through checkLTLAllPaths (audit C)', () => {
+  const selfLoop: KripkeStructure = {
+    states: [{ id: 's', name: 's', propositions: [], isInitial: true, x: 0, y: 0 }],
+    transitions: [{ from: 's', to: 's' }],
+  };
+  it('!(F a & F b & F c & F d & F e) is too-large', () => {
+    expect(checkLTLAllPaths(selfLoop, parseLTL('!(F a & F b & F c & F d & F e)')).kind).toBe('too-large');
+  });
+  it('G !a | G !b | G !c | G !d | G !e is too-large', () => {
+    expect(checkLTLAllPaths(selfLoop, parseLTL('G !a | G !b | G !c | G !d | G !e')).kind).toBe('too-large');
+  });
+  it('!(F a & F b & F c & F d) is NOT too-large', () => {
+    expect(checkLTLAllPaths(selfLoop, parseLTL('!(F a & F b & F c & F d)')).kind).not.toBe('too-large');
+  });
+});
+
+describe('vacuous holds on deadlock (audit C)', () => {
+  // s0[p] -> s1, s1 is a deadlock: the only maximal path is finite (s0, s1),
+  // so there is no infinite path to falsify any LTL formula — everything
+  // "holds" vacuously. See the Inspector's warning about infinite-path
+  // semantics on models with deadlocks/finite paths.
+  const m: KripkeStructure = {
+    states: [
+      { id: 's0', name: 's0', propositions: ['p'], isInitial: true, x: 0, y: 0 },
+      { id: 's1', name: 's1', propositions: [], isInitial: false, x: 0, y: 0 },
+    ],
+    transitions: [{ from: 's0', to: 's1' }],
+  };
+  it('G p holds vacuously', () => {
+    expect(checkLTLAllPaths(m, parseLTL('G p')).kind).toBe('holds');
+  });
+  it('false holds vacuously', () => {
+    expect(checkLTLAllPaths(m, parseLTL('false')).kind).toBe('holds');
+  });
+});
+
 describe('cross-checker invariant: counterexamples are valid and falsify the formula', () => {
   const formulas = ['G F r', 'F r', 'G w', 'w U r', 'X w', 'G (w -> X !r)', 'F G w',
     // regression: ⊤-right untils must not collapse the automaton language (universal formulas must hold)

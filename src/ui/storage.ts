@@ -55,6 +55,7 @@ export function validateSavedState(x: unknown): x is SavedState {
   const m = o.model as Record<string, unknown> | undefined;
   if (!m || !Array.isArray(m.states) || !Array.isArray(m.transitions)) return false;
   if (!m.states.every((s: unknown) => {
+    if (typeof s !== 'object' || s === null) return false;
     const st = s as Record<string, unknown>;
     return typeof st.id === 'string' && typeof st.name === 'string'
       && Array.isArray(st.propositions) && st.propositions.every((p: unknown) => typeof p === 'string')
@@ -63,12 +64,14 @@ export function validateSavedState(x: unknown): x is SavedState {
   })) return false;
   const stateIds = new Set((m.states as { id: string }[]).map((s) => s.id));
   if (!m.transitions.every((t: unknown) => {
+    if (typeof t !== 'object' || t === null) return false;
     const tr = t as Record<string, unknown>;
     return typeof tr.from === 'string' && typeof tr.to === 'string'
       && stateIds.has(tr.from) && stateIds.has(tr.to);
   })) return false;
   if (!Array.isArray(o.formulas)) return false;
   if (!(o.formulas as unknown[]).every((f) => {
+    if (typeof f !== 'object' || f === null) return false;
     const fe = f as Record<string, unknown>;
     return typeof fe.id === 'string' && typeof fe.text === 'string'
       && (fe.logic === undefined || fe.logic === 'ctl' || fe.logic === 'ltl' || fe.logic === 'ctlstar');

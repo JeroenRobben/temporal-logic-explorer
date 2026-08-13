@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateSavedState, normalizeSavedState, SavedState } from './storage';
+import { validateSavedState, normalizeSavedState, save, loadSaved, SavedState } from './storage';
 
 const good: SavedState = {
   model: {
@@ -33,5 +33,27 @@ describe('storage', () => {
     expect(validateSavedState(v1)).toBe(true);
     const n = normalizeSavedState(v1 as SavedState);
     expect(n.formulas).toEqual([{ id: 'f1', text: 'EF p', logic: 'ctl' }]);
+  });
+  it('rejects (does not throw on) null/non-object entries in states/transitions/formulas arrays', () => {
+    const cases = [
+      { model: { states: [null], transitions: [] }, formulas: [] },
+      { model: { states: [], transitions: [null] }, formulas: [] },
+      { model: { states: [], transitions: [] }, formulas: [null] },
+      { model: { states: [42], transitions: [] }, formulas: [] },
+    ];
+    for (const c of cases) {
+      expect(() => validateSavedState(c)).not.toThrow();
+      expect(validateSavedState(c)).toBe(false);
+    }
+  });
+  it('save() does not propagate when localStorage.setItem throws (quota exceeded)', () => {
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => { throw new DOMException('quota', 'QuotaExceededError'); };
+    try { expect(() => save(good)).not.toThrow(); } finally { Storage.prototype.setItem = orig; }
+  });
+  it('loadSaved() returns null when localStorage.getItem throws', () => {
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = () => { throw new Error('boom'); };
+    try { expect(loadSaved()).toBeNull(); } finally { Storage.prototype.getItem = orig; }
   });
 });

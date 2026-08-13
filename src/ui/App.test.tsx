@@ -310,4 +310,20 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Tree'));
     expect(document.querySelectorAll('.tree-branch').length).toBeGreaterThan(0);
   });
+
+  it('wrap gesture rewrites the formula via the tree', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('AG EF r'));
+    fireEvent.click(document.querySelectorAll('.node-row')[1]); // EF r
+    fireEvent.click(screen.getByTitle('wrap in AG'));
+    expect(screen.getByText('AG AG EF r', { selector: '.text' })).toBeTruthy(); // row text updated
+  });
+
+  it('swap gesture flips a quantifier', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('AG EF r'));
+    fireEvent.click(document.querySelectorAll('.node-row')[0]); // AG root
+    fireEvent.click(screen.getByTitle('swap A↔E'));
+    expect(screen.getByText('EG EF r', { selector: '.text' })).toBeTruthy();
+  });
 });

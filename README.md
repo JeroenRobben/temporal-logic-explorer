@@ -16,7 +16,12 @@ structures — built to learn CTL (and eventually LTL and CTL*) by seeing it.
   state to rename inline, right-click for propositions, Delete removes the selection,
   arrows nudge, mouse wheel zooms. Ctrl+Z / Ctrl+Shift+Z undo and redo; the
   Auto-layout button untangles the graph.
-- **Formulas (left):** pick LTL or CTL with the header tabs, type, press Enter.
+- **Formulas (left):** pick LTL / CTL / CTL* with the header tabs and compose with
+  live feedback: syntax-highlighted input, errors with one-click fixes as you type,
+  clickable proposition chips and operator palette (templates insert ▢ holes — Tab
+  jumps between them), and a live plain-English reading of what you wrote. ✎ edits
+  a formula in place; selecting a subformula in the inspector offers wrap/negate/
+  A↔E-swap gestures.
   CTL: `AX EX AF EF AG EG`, `A[p U q]`, `E[p U q]` — checked against the structure.
   LTL: `X F G`, `p U q` — checked against the current trace. Shared: `! & | -> <->`.
   LTL rows carry two verdicts: on the current trace, and `∀` — over all infinite

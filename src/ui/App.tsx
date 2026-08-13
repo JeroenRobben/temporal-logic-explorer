@@ -15,6 +15,7 @@ import { AutomatonTooLarge } from '../core/buchi';
 import { CTLNode } from '../core/ctl-parser';
 import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
 import { colorForNode } from './colors';
+import { wrapNode, swapQuantifier } from './formulaEdits';
 import { loadSaved, save, SavedState } from './storage';
 import { EXAMPLES } from './examples';
 import { useHistory } from './useHistory';
@@ -55,6 +56,7 @@ export default function App() {
   const [viewTab, setViewTab] = useState<'model' | 'tree' | 'automaton' | 'product'>('model');
   const [graphHover, setGraphHover] = useState<string | null>(null);
   const [treeHover, setTreeHover] = useState<string | null>(null);
+  const [gestureNotice, setGestureNotice] = useState<string | null>(null);
   const treeAvailable = model.states.some((s) => s.isInitial);
   const layoutAnim = useRef<number | null>(null);
 
@@ -380,6 +382,24 @@ export default function App() {
     setActiveFormulaId(id);
     setSelectedNodeId(null);
     setStepIndex(null);
+    setGestureNotice(null);
+  }
+
+  function applyFormulaEdit(action: { type: 'wrap'; wrapper: string } | { type: 'swap' }) {
+    setGestureNotice(null);
+    if (activeFormulaId === null || selectedNodeId === null) return;
+    const entry = formulas.find((f) => f.id === activeFormulaId);
+    if (!entry) return;
+    const result = action.type === 'wrap'
+      ? wrapNode(entry.logic, entry.text, selectedNodeId, action.wrapper)
+      : swapQuantifier(entry.logic, entry.text, selectedNodeId);
+    if (result === null) {
+      setGestureNotice(action.type === 'wrap'
+        ? 'That wrap would make the formula invalid here (CTL* roots need a path quantifier).'
+        : 'Nothing to swap on this node.');
+      return;
+    }
+    updateFormula(activeFormulaId, result);
   }
 
   function selectState(id: string | null) {
@@ -636,7 +656,7 @@ export default function App() {
             selection={selection}
             analysis={selection?.kind === 'formula' ? selectedAnalysis : activeAnalysis}
             selectedNodeId={selectedNodeId}
-            onSelectNode={(id) => { setSelectedNodeId(id); setStepIndex(null); }}
+            onSelectNode={(id) => { setSelectedNodeId(id); setStepIndex(null); setGestureNotice(null); }}
             stepIndex={stepIndex}
             onStepIndex={setStepIndex}
             showEvidence={showEvidence}
@@ -646,6 +666,8 @@ export default function App() {
             onLoadCounterexample={loadCounterexample}
             graphDetail={graphDetail ?? treeDetail}
             starEvidence={starEvidence}
+            onFormulaEdit={applyFormulaEdit}
+            gestureNotice={gestureNotice}
           />
         </div>
       </div>

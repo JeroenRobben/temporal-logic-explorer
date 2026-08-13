@@ -3,7 +3,7 @@ import { KripkeStructure, allPropositions, stateById, deadlockStates } from '../
 import { CTLNode, pretty } from '../core/ctl-parser';
 import { LTLNode, pretty as prettyLTL } from '../core/ltl-parser';
 import { StarNode, pretty as prettyStar } from '../core/ctlstar-parser';
-import { Analysis, Selection } from './types';
+import { Analysis, Logic, Selection } from './types';
 import { colorForNode } from './colors';
 import { Evidence } from '../core/evidence';
 import { Lasso } from '../core/trace';
@@ -24,6 +24,8 @@ export interface InspectorProps {
   onLoadCounterexample: (l: Lasso) => void;
   graphDetail: { title: string; lines: string[] } | null;
   starEvidence: { lasso: Lasso; kind: 'witness' | 'counterexample' } | null;
+  onFormulaEdit: (action: { type: 'wrap'; wrapper: string } | { type: 'swap' }) => void;
+  gestureNotice: string | null;
 }
 
 export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
@@ -188,12 +190,44 @@ function StarNodeTree(props: {
   );
 }
 
+function GestureRow(props: {
+  logic: Logic;
+  nodeKind: string | null;
+  onFormulaEdit: (a: { type: 'wrap'; wrapper: string } | { type: 'swap' }) => void;
+  notice: string | null;
+}) {
+  const { logic, nodeKind, onFormulaEdit, notice } = props;
+  if (nodeKind === null) return null;
+  const wraps = logic === 'ctl'
+    ? ['AG', 'EF', 'AF', 'EG', 'AX', 'EX']
+    : logic === 'ltl'
+      ? ['G', 'F', 'X']
+      : ['A', 'E', 'G', 'F', 'X'];
+  const swappable = ['AG', 'EG', 'AF', 'EF', 'AX', 'EX', 'AU', 'EU', 'A', 'E'].includes(nodeKind);
+  return (
+    <>
+      <div className="gesture-row">
+        <button className="op-btn" title="negate" onClick={() => onFormulaEdit({ type: 'wrap', wrapper: 'not' })}>¬</button>
+        {wraps.map((w) => (
+          <button key={w} className="op-btn" title={`wrap in ${w}`}
+            onClick={() => onFormulaEdit({ type: 'wrap', wrapper: w })}>{w}·</button>
+        ))}
+        {swappable && (
+          <button className="op-btn" title="swap A↔E" onClick={() => onFormulaEdit({ type: 'swap' })}>A↔E</button>
+        )}
+      </div>
+      {notice && <div className="hint">{notice}</div>}
+    </>
+  );
+}
+
 export default function Inspector(props: InspectorProps) {
   const {
     model, onChange, selection, analysis,
     selectedNodeId, onSelectNode, stepIndex, onStepIndex,
     showEvidence, onShowEvidence, evidence, onDeleteTransition,
     onLoadCounterexample, graphDetail, starEvidence,
+    onFormulaEdit, gestureNotice,
   } = props;
   const [newProp, setNewProp] = useState('');
 
@@ -299,6 +333,10 @@ export default function Inspector(props: InspectorProps) {
           <div className="section-title">Subformulas — rows in the timeline</div>
           <LTLNodeTree node={ltlAst} depth={0} selectedNodeId={selectedNodeId}
             onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          {selectedNodeId !== null && (
+            <GestureRow logic="ltl" nodeKind={selectedLTLNode?.kind ?? null}
+              onFormulaEdit={onFormulaEdit} notice={gestureNotice} />
+          )}
           {selectedLTLNode && <div className="gloss">{GLOSS[selectedLTLNode.kind]}</div>}
           <div className="section-title">Verdict (trace position 0)</div>
           {ltlRows
@@ -369,6 +407,10 @@ export default function Inspector(props: InspectorProps) {
           <div className="section-title">Subformulas — state formulas color the canvas</div>
           <StarNodeTree node={starAst} depth={0} cls={starCls} selectedNodeId={selectedNodeId}
             onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          {selectedNodeId !== null && (
+            <GestureRow logic="ctlstar" nodeKind={selectedStar?.kind ?? null}
+              onFormulaEdit={onFormulaEdit} notice={gestureNotice} />
+          )}
           {selectedStar && (
             <div className="gloss">
               {starCls.get(selectedStar.id) === 'state'
@@ -453,6 +495,10 @@ export default function Inspector(props: InspectorProps) {
         <div className="section-title">Subformulas — click to color states</div>
         <NodeTree node={ast} depth={0} selectedNodeId={selectedNodeId}
           onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+        {selectedNodeId !== null && (
+          <GestureRow logic="ctl" nodeKind={selectedNode?.kind ?? null}
+            onFormulaEdit={onFormulaEdit} notice={gestureNotice} />
+        )}
         {selectedNode && <div className="gloss">{GLOSS[selectedNode.kind]}</div>}
         {selectedResult && iterCount > 1 && (
           <>

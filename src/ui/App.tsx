@@ -390,6 +390,11 @@ export default function App() {
     setSelection(t ? { kind: 'transition', from: t.from, to: t.to } : null);
   }
 
+  function updateFormula(id: string, text: string) {
+    setFormulas((fs) => fs.map((f) => (f.id === id ? { ...f, text } : f)));
+    if (activeFormulaId === id) { setSelectedNodeId(null); setStepIndex(null); }
+  }
+
   // Cancels an in-flight auto-layout animation so undo/redo never race a
   // requestAnimationFrame loop that is still writing history.replace() frames.
   function cancelLayoutAnim() {
@@ -540,6 +545,9 @@ export default function App() {
             onSelect={selectFormula}
             onAdd={(text) => setFormulas((f) => [...f, { id: freshId('f'), text, logic: entryLogic }])}
             entryLogic={entryLogic}
+            model={model}
+            onUpdate={updateFormula}
+            onSwitchLogic={setEntryLogic}
             onRemove={(id) => {
               setFormulas((f) => f.filter((x) => x.id !== id));
               if (selectedFormulaId === id) setSelection(null);

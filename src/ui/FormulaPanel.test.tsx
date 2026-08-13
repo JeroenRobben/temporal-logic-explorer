@@ -6,12 +6,15 @@ import { parseCTL } from '../core/ctl-parser';
 import { parseLTL } from '../core/ltl-parser';
 import { parseCTLStar } from '../core/ctlstar-parser';
 import { ParseError } from '../core/ctl-parser';
+import { KripkeStructure } from '../core/kripke';
 
 function entry(id: string, text: string, logic: FormulaEntry['logic']): FormulaEntry {
   return { id, text, logic };
 }
 
 function noop() { /* no-op */ }
+
+const emptyModel: KripkeStructure = { states: [], transitions: [] };
 
 function renderPanel(analyses: Analysis[]) {
   return render(
@@ -22,6 +25,9 @@ function renderPanel(analyses: Analysis[]) {
       onAdd={noop}
       onRemove={noop}
       entryLogic="ctl"
+      model={emptyModel}
+      onUpdate={noop}
+      onSwitchLogic={noop}
     />,
   );
 }

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { pretty as prettyCTL } from '../core/ctl-parser';
 import { pretty as prettyLTL } from '../core/ltl-parser';
 import { pretty as prettyStar } from '../core/ctlstar-parser';
+import { KripkeStructure } from '../core/kripke';
 import { Analysis, Logic, LOGIC_LABEL } from './types';
+import Composer from './Composer';
 
 interface FormulaPanelProps {
   analyses: Analysis[];
@@ -11,28 +13,28 @@ interface FormulaPanelProps {
   onAdd: (text: string) => void;
   onRemove: (id: string) => void;
   entryLogic: Logic;
+  model: KripkeStructure;
+  onUpdate: (id: string, text: string) => void;
+  onSwitchLogic: (l: Logic) => void;
 }
 
 export default function FormulaPanel({
-  analyses, selectedFormulaId, onSelect, onAdd, onRemove, entryLogic,
+  analyses, selectedFormulaId, onSelect, onAdd, onRemove, entryLogic, model, onUpdate, onSwitchLogic,
 }: FormulaPanelProps) {
-  const [draft, setDraft] = useState('');
-
-  function submit() {
-    const t = draft.trim();
-    if (t === '') return;
-    onAdd(t);
-    setDraft('');
-  }
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
 
   return (
     <div>
-      <input
-        className="formula-input"
-        placeholder={`Add ${LOGIC_LABEL[entryLogic]} formula — press Enter`}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+      <Composer
+        logic={entryLogic}
+        model={model}
+        editing={editing}
+        onSave={(text) => {
+          if (editing) { onUpdate(editing.id, text); setEditing(null); }
+          else onAdd(text);
+        }}
+        onCancelEdit={() => setEditing(null)}
+        onSwitchLogic={onSwitchLogic}
       />
       <div style={{ marginTop: 8 }}>
         {analyses.map((a) => {
@@ -55,7 +57,9 @@ export default function FormulaPanel({
           return (
             <div
               key={a.entry.id}
-              className={`formula-row ${a.entry.id === selectedFormulaId ? 'selected' : ''}`}
+              className={`formula-row ${
+                a.entry.id === selectedFormulaId || editing?.id === a.entry.id ? 'selected' : ''
+              }`}
               onClick={() => onSelect(a.entry.id)}
               title={a.starTooLarge
                 ? 'automaton too large — simplify the formula'
@@ -68,8 +72,17 @@ export default function FormulaPanel({
               <span className="text">{text}</span>
               <button
                 className="remove"
+                title="Edit"
+                onClick={(e) => { e.stopPropagation(); setEditing({ id: a.entry.id, text: a.entry.text }); }}
+              >✎</button>
+              <button
+                className="remove"
                 title="Remove"
-                onClick={(e) => { e.stopPropagation(); onRemove(a.entry.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (editing?.id === a.entry.id) setEditing(null);
+                  onRemove(a.entry.id);
+                }}
               >×</button>
             </div>
           );

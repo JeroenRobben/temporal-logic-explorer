@@ -82,17 +82,22 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
   const hlRef = useRef<HTMLDivElement>(null);
   const preEditDraft = useRef<string>('');
   const pendingSelect = useRef<{ start: number; end: number } | null>(null);
+  const prevEditingId = useRef<string | null>(null);
 
-  // Entering edit mode loads the text; leaving restores the old draft.
+  // Entering edit mode loads the text; leaving restores the old draft. Only
+  // stash the draft on a fresh edit session (null -> editing); switching
+  // directly between two edits must not clobber the original stash with the
+  // first edit's unsaved in-progress text.
   const editingId = editing?.id ?? null;
   useEffect(() => {
     if (editing) {
-      preEditDraft.current = draft;
+      if (prevEditingId.current === null) preEditDraft.current = draft;
       setDraft(editing.text);
       taRef.current?.focus();
     } else {
       setDraft(preEditDraft.current);
     }
+    prevEditingId.current = editingId;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 
@@ -221,7 +226,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
                       setDraft(fix.replacement);
                     }}>{fix.label}</button>
                   )}
-                  {crossLogicTarget && (
+                  {crossLogicTarget && !fix && (
                     <button className="fix-btn" onClick={() => onSwitchLogic(crossLogicTarget)}>
                       Switch to {LOGIC_LABEL[crossLogicTarget]}
                     </button>

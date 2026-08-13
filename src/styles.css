@@ -102,7 +102,7 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .composer { margin-bottom: 8px; }
 .composer-input-wrap { position: relative; font-family: ui-monospace, monospace; font-size: 13px; }
 .composer-highlight { position: absolute; inset: 0; padding: 6px; pointer-events: none;
-  white-space: pre; overflow: hidden; }
+  white-space: pre; overflow: hidden; border: 1px solid transparent; }
 .composer-textarea { position: relative; width: 100%; padding: 6px; resize: none;
   font: inherit; line-height: inherit; background: transparent; color: transparent;
   caret-color: #222; border: 1px solid #ccc; border-radius: 4px; white-space: pre; overflow-x: auto; }

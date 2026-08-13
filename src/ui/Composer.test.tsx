@@ -73,4 +73,14 @@ describe('Composer', () => {
     expect(screen.getByText('AF w')).toBeTruthy();
     expect(screen.queryByText('AF r')).toBeNull();
   });
+
+  it('switching directly between two edits does not leak the first edit as a draft', () => {
+    render(<App />);
+    const rows = () => [...document.querySelectorAll('.formula-row')];
+    fireEvent.click(rows().find((r) => r.textContent!.includes('AF r'))!.querySelector('[title="Edit"]')!);
+    fireEvent.change(composerInput(), { target: { value: 'AF zzz' } }); // unsaved edit
+    fireEvent.click(rows().find((r) => r.textContent!.includes('AG EF r'))!.querySelector('[title="Edit"]')!);
+    fireEvent.keyDown(composerInput(), { key: 'Escape' }); // cancel second edit
+    expect((composerInput() as HTMLTextAreaElement).value).toBe(''); // pre-edit draft (empty), not 'AF zzz'
+  });
 });

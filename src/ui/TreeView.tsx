@@ -159,6 +159,7 @@ export default function TreeView({ model, highlight, trace, evidence, onHoverNod
                 const cp = p(c.key);
                 const onTrace = !!tb && tb.keys.has(n.key) && tb.keys.has(c.key);
                 const onEv = !!eb && eb.keys.has(n.key) && eb.keys.has(c.key);
+                // When trace and evidence share an edge, the trace (violet) intentionally wins.
                 edges.push(
                   <line key={`e-${c.key}`}
                     className={onTrace ? 'tree-branch' : onEv ? 'tree-branch-ev' : undefined}
@@ -170,7 +171,7 @@ export default function TreeView({ model, highlight, trace, evidence, onHoverNod
               }
               const st = stateById(model, n.stateId);
               nodes.push(
-                <g key={`n-${n.key}`} className="tree-node"
+                <g key={`n-${n.key}`} className="tree-node" style={{ cursor: 'default' }}
                   onMouseEnter={() => onHoverNode(n.stateId)}>
                   {highlight?.sat.has(n.stateId) && (
                     <circle className="tree-ring" cx={np.x} cy={np.y} r={NODE_R + 4}

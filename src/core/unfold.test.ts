@@ -70,4 +70,29 @@ describe('unfoldTree', () => {
     expect(countUnfoldBounded(k, ['w'], 3, 800)).toBe(10);
     expect(countUnfoldBounded(k, ['w'], 6, 5)).toBe(6); // cap + 1: early exit
   });
+
+  describe('depth-6, branching-3 closed form', () => {
+    // fully connected 3-state model: every state has exactly 3 successors,
+    // so the unfolding is a complete ternary tree of depth 6.
+    const k3: KripkeStructure = {
+      states: [
+        { id: 'x', name: 'x', propositions: [], isInitial: true, x: 0, y: 0 },
+        { id: 'y', name: 'y', propositions: [], isInitial: false, x: 0, y: 0 },
+        { id: 'z', name: 'z', propositions: [], isInitial: false, x: 0, y: 0 },
+      ],
+      transitions: ['x', 'y', 'z'].flatMap((from) => ['x', 'y', 'z'].map((to) => ({ from, to }))),
+    };
+    // sum_{i=0..6} 3^i = (3^7 - 1) / 2 = 1093
+    const EXPECTED = 1093;
+
+    it('countNodes matches the closed-form node count', () => {
+      expect(countNodes(unfoldTree(k3, 'x', 6))).toBe(EXPECTED);
+    });
+    it('countUnfoldBounded equals countNodes when under the cap', () => {
+      expect(countUnfoldBounded(k3, ['x'], 6, 2000)).toBe(EXPECTED);
+    });
+    it('countUnfoldBounded exits early once over the cap', () => {
+      expect(countUnfoldBounded(k3, ['x'], 6, 100)).toBe(101);
+    });
+  });
 });

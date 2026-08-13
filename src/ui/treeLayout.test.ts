@@ -57,4 +57,41 @@ describe('layoutTree', () => {
     const maxX = Math.max(...[...positions.values()].map((p) => p.x));
     expect(minX).toBeGreaterThan(maxX + X_SLOT - 1);
   });
+
+  describe('5-root forest', () => {
+    // Same tree shape unfolded 5 times and laid out side by side, mirroring
+    // how TreeView lays out multiple roots (slot += slots + 1 each time).
+    const trees = Array.from({ length: 5 }, () => unfoldTree(k, 'w', 3));
+    let slot = 0;
+    const layouts = trees.map((t) => {
+      const { positions, slots } = layoutTree(t, slot);
+      slot += slots + 1;
+      return positions;
+    });
+
+    it('no two nodes at the same depth share an x, across all trees', () => {
+      const byDepth = new Map<number, number[]>();
+      trees.forEach((t, ti) => {
+        (function walk(n: TreeNode) {
+          const arr = byDepth.get(n.depth) ?? [];
+          arr.push(layouts[ti].get(n.key)!.x);
+          byDepth.set(n.depth, arr);
+          n.children.forEach(walk);
+        })(t);
+      });
+      for (const xs of byDepth.values()) {
+        expect(new Set(xs).size).toBe(xs.length);
+      }
+    });
+
+    it('per-tree x-ranges are strictly increasing', () => {
+      const ranges = layouts.map((positions) => {
+        const xs = [...positions.values()].map((p) => p.x);
+        return { min: Math.min(...xs), max: Math.max(...xs) };
+      });
+      for (let i = 1; i < ranges.length; i++) {
+        expect(ranges[i].min).toBeGreaterThan(ranges[i - 1].max);
+      }
+    });
+  });
 });

@@ -19,8 +19,8 @@ interface TreeViewProps {
   onHoverNode: (stateId: string | null) => void;
 }
 
-/** Unroll a (possibly looping) state sequence to at most maxLen positions. */
-function unrollLasso(
+/** exported for testing */
+export function unrollLasso(
   stateIds: string[], loopIndex: number | null, maxLen: number,
 ): { seq: string[]; continues: boolean } {
   const seq: string[] = [];
@@ -38,7 +38,8 @@ function unrollLasso(
 
 /** Map a state sequence onto the tree as a root-downward branch. cutKey marks
  *  the last matched node when the sequence continues beyond the visible tree. */
-function branchMatch(
+/** exported for testing */
+export function branchMatch(
   root: TreeNode, seq: string[], continues: boolean,
 ): { keys: Set<string>; cutKey: string | null } {
   if (seq.length === 0 || root.stateId !== seq[0]) return { keys: new Set(), cutKey: null };

@@ -20,7 +20,8 @@ interface TimelineProps {
   onDismissNotice: () => void;
 }
 
-function postOrder(n: LTLNode): LTLNode[] {
+/** exported for testing */
+export function postOrder(n: LTLNode): LTLNode[] {
   const out: LTLNode[] = [];
   (function walk(m: LTLNode) {
     if ('child' in m) walk(m.child);
@@ -31,7 +32,8 @@ function postOrder(n: LTLNode): LTLNode[] {
 }
 
 /** For a true F/U/X cell, the position that justifies it (or null). */
-function witnessFor(
+/** exported for testing */
+export function witnessFor(
   node: LTLNode, rows: Map<number, boolean[]>, lasso: Lasso, i: number,
 ): number | null {
   const len = lasso.stateIds.length;

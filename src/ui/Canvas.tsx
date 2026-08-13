@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from 'react';
 import { KripkeStructure, KripkeState, stateById, allPropositions, successors } from '../core/kripke';
 import { Evidence } from '../core/evidence';
-import { EVIDENCE_COLOR } from './colors';
+import { EVIDENCE_COLOR, TRACE_COLOR } from './colors';
 import { RESERVED_NAMES } from './Inspector';
 import { PendingLasso } from './types';
 
@@ -305,7 +305,6 @@ export default function Canvas(props: CanvasProps) {
   const hasReverse = (from: string, to: string) =>
     model.transitions.some((t) => t.from === to && t.to === from);
 
-  const TRACE_COLOR = '#7c3aed';
   const traceBadges = new Map<string, number[]>();
   if (trace) {
     trace.stateIds.forEach((id, i) => {

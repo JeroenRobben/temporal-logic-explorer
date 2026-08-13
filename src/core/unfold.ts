@@ -35,3 +35,25 @@ export function unfoldTree(model: KripkeStructure, rootStateId: string, maxDepth
 export function countNodes(root: TreeNode): number {
   return 1 + root.children.reduce((acc, c) => acc + countNodes(c), 0);
 }
+
+/** Count the unfolding's nodes across all roots, stopping early once the
+ *  count exceeds cap (returns cap + 1 in that case). */
+export function countUnfoldBounded(
+  model: KripkeStructure, rootStateIds: string[], maxDepth: number, cap: number,
+): number {
+  let count = 0;
+  function walk(stateId: string, depth: number): boolean {
+    count++;
+    if (count > cap) return false;
+    if (depth < maxDepth) {
+      for (const succ of successors(model, stateId)) {
+        if (!walk(succ, depth + 1)) return false;
+      }
+    }
+    return true;
+  }
+  for (const r of rootStateIds) {
+    if (!walk(r, 0)) return count;
+  }
+  return count;
+}

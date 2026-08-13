@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { KripkeStructure } from './kripke';
-import { unfoldTree, countNodes, TreeNode } from './unfold';
+import { unfoldTree, countNodes, countUnfoldBounded, TreeNode } from './unfold';
 
 // reset example: w (self-loop) -> e -> r -> w
 const k: KripkeStructure = {
@@ -65,5 +65,9 @@ describe('unfoldTree', () => {
   });
   it('is deterministic', () => {
     expect(JSON.stringify(unfoldTree(k, 'w', 4))).toBe(JSON.stringify(unfoldTree(k, 'w', 4)));
+  });
+  it('countUnfoldBounded matches countNodes below the cap and stops early above it', () => {
+    expect(countUnfoldBounded(k, ['w'], 3, 800)).toBe(10);
+    expect(countUnfoldBounded(k, ['w'], 6, 5)).toBe(6); // cap + 1: early exit
   });
 });

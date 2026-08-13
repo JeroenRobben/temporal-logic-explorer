@@ -8,3 +8,4 @@ export function colorForNode(nodeId: number): string {
 }
 
 export const EVIDENCE_COLOR = '#ff7f2a';
+export const TRACE_COLOR = '#7c3aed';

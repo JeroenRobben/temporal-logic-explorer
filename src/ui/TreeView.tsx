@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { KripkeStructure, stateById } from '../core/kripke';
-import { TreeNode, unfoldTree, countNodes } from '../core/unfold';
+import { TreeNode, unfoldTree, countNodes, countUnfoldBounded } from '../core/unfold';
 import { layoutTree, TreePos } from './treeLayout';
 import { PendingLasso } from './types';
-import { EVIDENCE_COLOR } from './colors';
+import { EVIDENCE_COLOR, TRACE_COLOR } from './colors';
 
-const TRACE_COLOR = '#7c3aed';
 const NODE_R = 16;
 const MAX_NODES = 800;
 
@@ -34,7 +33,7 @@ function unrollLasso(
     seq.push(stateIds[pos]);
     pos++;
   }
-  return { seq, continues: true };
+  return { seq, continues: loopIndex !== null || pos < stateIds.length };
 }
 
 /** Map a state sequence onto the tree as a root-downward branch. cutKey marks
@@ -64,14 +63,17 @@ export default function TreeView({ model, highlight, trace, evidence, onHoverNod
   const roots = useMemo(() => model.states.filter((s) => s.isInitial), [model]);
 
   const { trees, effDepth, clamped } = useMemo(() => {
+    const rootIds = roots.map((r) => r.id);
+    let chosenDepth = depth;
     for (let d = depth; d >= 1; d--) {
-      const ts = roots.map((r) => unfoldTree(model, r.id, d));
-      const total = ts.reduce((acc, t) => acc + countNodes(t), 0);
+      const total = countUnfoldBounded(model, rootIds, d, MAX_NODES);
       if (total <= MAX_NODES || d === 1) {
-        return { trees: ts, effDepth: d, clamped: d < depth };
+        chosenDepth = d;
+        break;
       }
     }
-    return { trees: [] as TreeNode[], effDepth: depth, clamped: false };
+    const ts = roots.map((r) => unfoldTree(model, r.id, chosenDepth));
+    return { trees: ts, effDepth: chosenDepth, clamped: chosenDepth < depth };
   }, [model, roots, depth]);
 
   const layouts = useMemo(() => {

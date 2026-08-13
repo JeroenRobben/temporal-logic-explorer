@@ -50,4 +50,13 @@ describe('findAcceptingLasso', () => {
   it('handles an empty product', () => {
     expect(findAcceptingLasso({ states: [], edges: [] })).toBe(null);
   });
+  it('does not overflow the stack on a 10000-state linear chain (iterative Tarjan)', () => {
+    const n = 10000;
+    const states: [string, boolean, boolean][] = Array.from({ length: n }, (_, i) => [
+      `s${i}`, i === n - 1, i === 0,
+    ]);
+    const edges: [string, string][] = Array.from({ length: n }, (_, i) => [`s${i}`, `s${(i + 1) % n}`]);
+    const r = findAcceptingLasso(g(states, edges));
+    expect(r).not.toBeNull();
+  });
 });

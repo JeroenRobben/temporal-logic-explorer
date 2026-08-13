@@ -70,18 +70,30 @@ describe('checkLTLAllPaths', () => {
   });
 });
 
-describe('oversized product guard (audit C-2)', () => {
-  it('a 4500-state linear-chain product returns too-large without throwing RangeError', () => {
-    const n = 4500;
+describe('deep product does not overflow the stack (audit W6, iterative Tarjan)', () => {
+  // a0 -> a1 -> ... -> a4499 -> a0, every state has p. The product DFS depth
+  // tracks the chain length, well past the ~3984-deep recursion cliff.
+  const n = 4500;
+  function chain(pOnEvery: boolean): KripkeStructure {
     const states = Array.from({ length: n }, (_, i) => ({
-      id: `a${i}`, name: `a${i}`, propositions: ['p'], isInitial: i === 0, x: 0, y: 0,
+      id: `a${i}`, name: `a${i}`, propositions: pOnEvery || i !== 1 ? ['p'] : [], isInitial: i === 0, x: 0, y: 0,
     }));
     const transitions = Array.from({ length: n }, (_, i) => ({
       from: `a${i}`, to: `a${(i + 1) % n}`,
     }));
-    const model: KripkeStructure = { states, transitions };
+    return { states, transitions };
+  }
+  it('G p holds on a 4500-state loop where every state has p', () => {
+    const model = chain(true);
     expect(() => checkLTLAllPaths(model, parseLTL('G p'))).not.toThrow();
-    expect(checkLTLAllPaths(model, parseLTL('G p')).kind).toBe('too-large');
+    expect(checkLTLAllPaths(model, parseLTL('G p')).kind).toBe('holds');
+  });
+  it('G p fails on the same loop when one state is missing p, with a valid counterexample', () => {
+    const model = chain(false);
+    const res = checkLTLAllPaths(model, parseLTL('G p'));
+    expect(res.kind).toBe('fails');
+    if (res.kind !== 'fails') throw new Error('expected fails');
+    expect(validateLasso(model, res.counterexample)).toBe(null);
   });
 });
 

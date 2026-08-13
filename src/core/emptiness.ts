@@ -16,7 +16,8 @@ export function findAcceptingLasso(g: ProductGraph): ProductLasso | null {
   const initials = g.states.filter((s) => s.initial).map((s) => s.id);
   if (initials.length === 0) return null;
 
-  // Tarjan SCC (recursive; product sizes here are small)
+  // Tarjan SCC (iterative; explicit stack — recursion overflows the JS stack
+  // on deep products, so DFS state lives in `work` instead of the call stack)
   const index = new Map<string, number>();
   const low = new Map<string, number>();
   const onStack = new Set<string>();
@@ -25,32 +26,49 @@ export function findAcceptingLasso(g: ProductGraph): ProductLasso | null {
   let nextIndex = 0;
   let nextScc = 0;
 
-  function strongconnect(v: string): void {
-    index.set(v, nextIndex);
-    low.set(v, nextIndex);
-    nextIndex++;
-    stack.push(v);
-    onStack.add(v);
-    for (const w of succ.get(v) ?? []) {
-      if (!index.has(w)) {
-        strongconnect(w);
-        low.set(v, Math.min(low.get(v)!, low.get(w)!));
-      } else if (onStack.has(w)) {
-        low.set(v, Math.min(low.get(v)!, index.get(w)!));
+  for (const root of initials) {
+    if (index.has(root)) continue;
+    const work: { v: string; i: number }[] = [{ v: root, i: 0 }];
+    while (work.length > 0) {
+      const frame = work[work.length - 1];
+      const v = frame.v;
+      if (frame.i === 0) {
+        index.set(v, nextIndex);
+        low.set(v, nextIndex);
+        nextIndex++;
+        stack.push(v);
+        onStack.add(v);
       }
-    }
-    if (low.get(v) === index.get(v)) {
-      const id = nextScc++;
-      for (;;) {
-        const w = stack.pop()!;
-        onStack.delete(w);
-        sccOf.set(w, id);
-        if (w === v) break;
+      const neighbors = succ.get(v) ?? [];
+      let recursed = false;
+      while (frame.i < neighbors.length) {
+        const w = neighbors[frame.i++];
+        if (!index.has(w)) {
+          work.push({ v: w, i: 0 });
+          recursed = true;
+          break;
+        }
+        if (onStack.has(w)) low.set(v, Math.min(low.get(v)!, index.get(w)!));
+      }
+      if (recursed) continue;
+      if (low.get(v) === index.get(v)) {
+        const id = nextScc++;
+        for (;;) {
+          const w = stack.pop()!;
+          onStack.delete(w);
+          sccOf.set(w, id);
+          if (w === v) break;
+        }
+      }
+      work.pop();
+      // propagate lowlink to parent (equivalent to the recursive call's
+      // low.set(v, Math.min(low.get(v)!, low.get(w)!)) after it returns)
+      if (work.length > 0) {
+        const parent = work[work.length - 1];
+        low.set(parent.v, Math.min(low.get(parent.v)!, low.get(v)!));
       }
     }
   }
-
-  for (const init of initials) if (!index.has(init)) strongconnect(init);
 
   // (Only states reachable from initials got visited — unreached states have no scc.)
   const members = new Map<number, string[]>();

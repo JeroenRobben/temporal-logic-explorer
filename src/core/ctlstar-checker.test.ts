@@ -154,6 +154,27 @@ describe('deadlock caveat: CTL* infinite-path semantics vs CTL maximal-path sema
   });
 });
 
+describe('checkCTLStar on a long chain does not throw (audit W6, iterative Tarjan)', () => {
+  // checkCTLStar's A(Gp) check runs an emptiness query per state, so it's
+  // quadratic in chain length here; keep this at a size that stays fast.
+  // Stack-safety at real depth (~10000) is covered directly in
+  // emptiness.test.ts against findAcceptingLasso.
+  it('A (G p) holds on a 300-state loop where every state has p', () => {
+    const n = 300;
+    const states = Array.from({ length: n }, (_, i) => ({
+      id: `a${i}`, name: `a${i}`, propositions: ['p'], isInitial: i === 0, x: 0, y: 0,
+    }));
+    const transitions = Array.from({ length: n }, (_, i) => ({
+      from: `a${i}`, to: `a${(i + 1) % n}`,
+    }));
+    const model: KripkeStructure = { states, transitions };
+    const root = parseCTLStar('A (G p)');
+    expect(() => checkCTLStar(model, root)).not.toThrow();
+    const res = checkCTLStar(model, root);
+    expect([...res.sat.get(root.id)!].sort()).toEqual(states.map((s) => s.id).sort());
+  });
+});
+
 describe('findStarEvidence', () => {
   it('failing root A yields a counterexample lasso that falsifies ψ', () => {
     const root = parseCTLStar('A (G F r)');

@@ -94,3 +94,7 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .center-stack .view-body { flex: 1; position: relative; overflow: hidden; }
 .graph-label { font-size: 12px; }
 .edge-label { font-size: 10px; font-family: ui-monospace, monospace; fill: #555; }
+
+.tree-toolbar { display: flex; align-items: center; gap: 8px; padding: 4px 10px;
+  font-size: 12px; background: #fdfdfd; border-bottom: 1px solid #eee; }
+.tree-toolbar input[type="range"] { width: 120px; }

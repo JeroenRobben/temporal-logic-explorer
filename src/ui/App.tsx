@@ -9,9 +9,10 @@ import { AllPathsResult, checkLTLAllPaths } from '../core/ltl-allpaths';
 import { findEvidence } from '../core/evidence';
 import { forceLayout } from '../core/layout';
 import { buildProduct } from '../core/product';
-import { parseCTLStar, classify } from '../core/ctlstar-parser';
+import { parseCTLStar, classify, StarNode } from '../core/ctlstar-parser';
 import { checkCTLStar, findStarEvidence, CTLStarResult } from '../core/ctlstar-checker';
 import { AutomatonTooLarge } from '../core/buchi';
+import { CTLNode } from '../core/ctl-parser';
 import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
 import { colorForNode } from './colors';
 import { loadSaved, save, SavedState } from './storage';
@@ -23,6 +24,7 @@ import Canvas, { Highlight } from './Canvas';
 import GraphView, { RenderGraph } from './GraphView';
 import Inspector from './Inspector';
 import Timeline from './Timeline';
+import TreeView, { TreeEvidence } from './TreeView';
 
 let idCounter = 0;
 function freshId(prefix: string): string {
@@ -50,8 +52,10 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [traceNotice, setTraceNotice] = useState<string | null>(null);
   const [hoverStateId, setHoverStateId] = useState<string | null>(null);
-  const [viewTab, setViewTab] = useState<'model' | 'automaton' | 'product'>('model');
+  const [viewTab, setViewTab] = useState<'model' | 'tree' | 'automaton' | 'product'>('model');
   const [graphHover, setGraphHover] = useState<string | null>(null);
+  const [treeHover, setTreeHover] = useState<string | null>(null);
+  const treeAvailable = model.states.some((s) => s.isInitial);
   const layoutAnim = useRef<number | null>(null);
 
   useEffect(() => { setViewTab('model'); setGraphHover(null); }, [activeFormulaId]);
@@ -281,6 +285,39 @@ export default function App() {
     return null;
   }, [graphable, graphHover, viewTab, model]);
 
+  function findCTLNodeById(n: CTLNode, id: number): CTLNode | undefined {
+    if (n.id === id) return n;
+    const kids = 'child' in n ? [n.child] : 'left' in n ? [n.left, n.right] : [];
+    for (const c of kids) { const r = findCTLNodeById(c, id); if (r) return r; }
+    return undefined;
+  }
+  function findStarNodeById(n: StarNode, id: number): StarNode | undefined {
+    if (n.id === id) return n;
+    const kids = 'child' in n ? [n.child] : 'left' in n ? [n.left, n.right] : [];
+    for (const c of kids) { const r = findStarNodeById(c, id); if (r) return r; }
+    return undefined;
+  }
+
+  const treeDetail = useMemo(() => {
+    if (viewTab !== 'tree' || treeHover === null) return null;
+    const st = stateById(model, treeHover);
+    if (!st) return null;
+    const lines: string[] = [`propositions: ${st.propositions.join(', ') || '—'}`];
+    const kind = (() => {
+      if (selectedNodeId === null) return null;
+      if (activeAnalysis?.ast) return findCTLNodeById(activeAnalysis.ast, selectedNodeId)?.kind ?? null;
+      if (activeAnalysis?.starAst) return findStarNodeById(activeAnalysis.starAst, selectedNodeId)?.kind ?? null;
+      return null;
+    })();
+    if (kind !== null && ['AX', 'AF', 'AG', 'AU', 'A'].includes(kind)) {
+      lines.push('Universal quantifier: must hold along every branch below this node.');
+    }
+    if (kind !== null && ['EX', 'EF', 'EG', 'EU', 'E'].includes(kind)) {
+      lines.push('Existential quantifier: one branch below this node suffices.');
+    }
+    return { title: `${st.name} (tree node)`, lines };
+  }, [viewTab, treeHover, model, selectedNodeId, activeAnalysis]);
+
   const highlight: Highlight | null = useMemo(() => {
     if (activeAnalysis?.starResult && selectedNodeId !== null) {
       const s = activeAnalysis.starResult.sat.get(selectedNodeId);
@@ -317,6 +354,23 @@ export default function App() {
     return findStarEvidence(model, parseCTLStar(entry.text), cached);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFormulaId, starMap, formulas]);
+
+  const treeEvidence: TreeEvidence | null = useMemo(() => {
+    if (activeAnalysis?.entry.logic === 'ctlstar' && starEvidence) {
+      return { stateIds: starEvidence.lasso.stateIds, loopIndex: starEvidence.lasso.loopIndex };
+    }
+    if (activeLTLAnalysis?.allPaths?.kind === 'fails') {
+      const c = activeLTLAnalysis.allPaths.counterexample;
+      return { stateIds: c.stateIds, loopIndex: c.loopIndex };
+    }
+    if (evidence) {
+      // CTL evidence lassos repeat the loop-entry state at the end — normalize.
+      return evidence.loopIndex !== undefined
+        ? { stateIds: evidence.path.slice(0, -1), loopIndex: evidence.loopIndex }
+        : { stateIds: evidence.path, loopIndex: null };
+    }
+    return null;
+  }, [activeAnalysis, activeLTLAnalysis, starEvidence, evidence]);
 
   const deadlocks = useMemo(() => new Set(deadlockStates(model)), [model]);
 
@@ -500,47 +554,70 @@ export default function App() {
         </div>
         <div className="pane center" onMouseLeave={() => setHoverStateId(null)}>
           <div className="center-stack">
-            {graphable && (
+            {(graphable || treeAvailable) && (
               <div className="view-tabs">
                 <button className={`tab ${viewTab === 'model' ? 'active' : ''}`}
                   onClick={() => setViewTab('model')}>Model</button>
-                <button className={`tab ${viewTab === 'automaton' ? 'active' : ''}`}
-                  title={graphable.kind === 'ltl' && activeLTLAnalysis?.ltlAst
-                    ? `Büchi automaton for ¬(${prettyLTL(activeLTLAnalysis.ltlAst)})`
-                    : 'Büchi automaton the checker ran for the selected quantifier (¬ψ for A, ψ for E)'}
-                  onClick={() => setViewTab('automaton')}>
-                  {graphable.kind === 'ltl' ? 'Automaton ¬φ' : 'Automaton'}
-                </button>
-                <button className={`tab ${viewTab === 'product' ? 'active' : ''}`}
-                  onClick={() => setViewTab('product')}>Product</button>
+                {treeAvailable && (
+                  <button className={`tab ${viewTab === 'tree' ? 'active' : ''}`}
+                    title="Unfold the computation tree from the initial state(s)"
+                    onClick={() => setViewTab('tree')}>Tree</button>
+                )}
+                {graphable && (
+                  <>
+                    <button className={`tab ${viewTab === 'automaton' ? 'active' : ''}`}
+                      title={graphable.kind === 'ltl' && activeLTLAnalysis?.ltlAst
+                        ? `Büchi automaton for ¬(${prettyLTL(activeLTLAnalysis.ltlAst)})`
+                        : 'Büchi automaton the checker ran for the selected quantifier (¬ψ for A, ψ for E)'}
+                      onClick={() => setViewTab('automaton')}>
+                      {graphable.kind === 'ltl' ? 'Automaton ¬φ' : 'Automaton'}
+                    </button>
+                    <button className={`tab ${viewTab === 'product' ? 'active' : ''}`}
+                      onClick={() => setViewTab('product')}>Product</button>
+                  </>
+                )}
               </div>
             )}
             <div className="view-body">
-              {(!graphable || viewTab === 'model') ? (
-                <Canvas
-                  model={model}
-                  onChange={commitModel}
-                  onPreview={previewModel}
-                  onBeginEdit={beginEdit}
-                  selectedStateId={selection?.kind === 'state' ? selection.id : null}
-                  selectedTransition={selection?.kind === 'transition'
-                    ? { from: selection.from, to: selection.to } : null}
-                  onSelectState={selectState}
-                  onSelectTransition={selectTransition}
-                  highlight={highlight}
-                  evidence={evidence}
-                  deadlocks={deadlocks}
-                  trace={trace}
-                  recording={recording}
-                  onRecordingChange={startRecording}
-                  onTraceClick={handleTraceClick}
-                  hoverStateId={hoverStateId}
-                />
-              ) : viewTab === 'automaton' ? (
-                <GraphView key={viewTab} graph={automatonGraph!} onHoverNode={setGraphHover} />
-              ) : (
-                <GraphView key={viewTab} graph={productGraph!} onHoverNode={setGraphHover} />
-              )}
+              {(() => {
+                const canvasEl = (
+                  <Canvas
+                    model={model}
+                    onChange={commitModel}
+                    onPreview={previewModel}
+                    onBeginEdit={beginEdit}
+                    selectedStateId={selection?.kind === 'state' ? selection.id : null}
+                    selectedTransition={selection?.kind === 'transition'
+                      ? { from: selection.from, to: selection.to } : null}
+                    onSelectState={selectState}
+                    onSelectTransition={selectTransition}
+                    highlight={highlight}
+                    evidence={evidence}
+                    deadlocks={deadlocks}
+                    trace={trace}
+                    recording={recording}
+                    onRecordingChange={startRecording}
+                    onTraceClick={handleTraceClick}
+                    hoverStateId={hoverStateId}
+                  />
+                );
+                if (viewTab === 'tree') {
+                  return treeAvailable ? (
+                    <TreeView
+                      model={model}
+                      highlight={highlight}
+                      trace={trace}
+                      evidence={treeEvidence}
+                      onHoverNode={setTreeHover}
+                    />
+                  ) : canvasEl;
+                }
+                if (!graphable || viewTab === 'model') return canvasEl;
+                if (viewTab === 'automaton') {
+                  return <GraphView key={viewTab} graph={automatonGraph!} onHoverNode={setGraphHover} />;
+                }
+                return <GraphView key={viewTab} graph={productGraph!} onHoverNode={setGraphHover} />;
+              })()}
             </div>
           </div>
         </div>
@@ -559,7 +636,7 @@ export default function App() {
             evidence={evidence}
             onDeleteTransition={deleteTransition}
             onLoadCounterexample={loadCounterexample}
-            graphDetail={graphDetail}
+            graphDetail={graphDetail ?? treeDetail}
             starEvidence={starEvidence}
           />
         </div>

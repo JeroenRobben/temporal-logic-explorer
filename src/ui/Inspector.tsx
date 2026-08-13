@@ -498,6 +498,13 @@ export default function Inspector(props: InspectorProps) {
             </div>
           </>
         )}
+        {graphDetail && (
+          <>
+            <div className="section-title">Hovered node</div>
+            <div style={{ fontWeight: 600 }}>{graphDetail.title}</div>
+            {graphDetail.lines.map((l, i) => <div key={i} className="muted">{l}</div>)}
+          </>
+        )}
       </div>
     );
   }

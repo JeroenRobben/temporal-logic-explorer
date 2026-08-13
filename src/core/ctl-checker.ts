@@ -20,8 +20,15 @@ export function checkCTL(k: KripkeStructure, root: CTLNode): EvaluationRecord {
   const succ = new Map(ids.map((id) => [id, successors(k, id)]));
   // pre∃(Z): states with SOME successor in Z. pre∀(Z): states with ALL
   // successors in Z — vacuously true for deadlock states (empty successor set).
+  //
+  // Maximal-path semantics: finite paths ending at a deadlock count as paths.
+  // AX stays vacuously true at deadlocks (dual of EX); AF/AU additionally
+  // require a successor so deadlocks can't discharge them vacuously; EG
+  // accepts deadlocks whose maximal (finite) path satisfies the invariant.
   const preE = (Z: Set<string>) => new Set(ids.filter((s) => succ.get(s)!.some((t) => Z.has(t))));
   const preA = (Z: Set<string>) => new Set(ids.filter((s) => succ.get(s)!.every((t) => Z.has(t))));
+  const hasSucc = new Set(ids.filter((s) => succ.get(s)!.length > 0));
+  const dead = new Set(ids.filter((s) => succ.get(s)!.length === 0));
 
   const eq = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every((x) => b.has(x));
   const union = (a: Set<string>, b: Set<string>) => new Set([...a, ...b]);
@@ -63,8 +70,8 @@ export function checkCTL(k: KripkeStructure, root: CTLNode): EvaluationRecord {
       case 'EX': r = single(preE(ev(n.child))); break;
       case 'AX': r = single(preA(ev(n.child))); break;
       case 'EF': { const c = ev(n.child); r = fixpoint(c, (Z) => union(Z, preE(Z))); break; }
-      case 'AF': { const c = ev(n.child); r = fixpoint(c, (Z) => union(Z, preA(Z))); break; }
-      case 'EG': { const c = ev(n.child); r = fixpoint(c, (Z) => inter(c, preE(Z))); break; }
+      case 'AF': { const c = ev(n.child); r = fixpoint(c, (Z) => union(Z, inter(preA(Z), hasSucc))); break; }
+      case 'EG': { const c = ev(n.child); r = fixpoint(c, (Z) => inter(c, union(preE(Z), dead))); break; }
       case 'AG': { const c = ev(n.child); r = fixpoint(c, (Z) => inter(c, preA(Z))); break; }
       case 'EU': {
         const l = ev(n.left), rr = ev(n.right);
@@ -73,7 +80,7 @@ export function checkCTL(k: KripkeStructure, root: CTLNode): EvaluationRecord {
       }
       case 'AU': {
         const l = ev(n.left), rr = ev(n.right);
-        r = fixpoint(rr, (Z) => union(Z, inter(l, preA(Z))));
+        r = fixpoint(rr, (Z) => union(Z, inter(inter(l, preA(Z)), hasSucc)));
         break;
       }
     }

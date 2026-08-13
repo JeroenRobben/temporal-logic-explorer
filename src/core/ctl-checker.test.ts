@@ -87,6 +87,44 @@ describe('checkCTL', () => {
     expect(r.sat).toEqual(['a']);
     expect(r.record.deadlocks).toEqual(['a']);
   });
+  it('deadlocks do not vacuously satisfy AF/AU, and do satisfy EG when the invariant holds', () => {
+    const kd: KripkeStructure = {
+      states: [
+        { id: 's0', name: 's0', propositions: ['p'], isInitial: true, x: 0, y: 0 },
+        { id: 's1', name: 's1', propositions: [], isInitial: false, x: 0, y: 0 },
+      ],
+      transitions: [{ from: 's0', to: 's1' }],
+    };
+    expect(sat(kd, 'AF false').sat).toEqual([]);
+    expect(sat(kd, 'AF p').sat).toEqual(['s0']);
+    expect(sat(kd, 'A[true U p]').sat).toEqual(['s0']);
+    // p only holds at s0, so the maximal path s0->s1 does NOT satisfy G p
+    // (p fails at the deadlock s1) — EG p is false at s0 on this fixture.
+    expect(sat(kd, 'EG p').sat).toEqual([]);
+    // With p holding at both states, the finite maximal path s0->s1 does
+    // satisfy G p throughout, so EG p holds at s0 (and at s1, vacuously).
+    const kd2: KripkeStructure = {
+      ...kd,
+      states: kd.states.map((s) => ({ ...s, propositions: ['p'] })),
+    };
+    expect(sat(kd2, 'EG p').sat).toEqual(['s0', 's1']);
+  });
+  it('CTL duality laws hold on models with and without deadlocks', () => {
+    const kd: KripkeStructure = {
+      states: [
+        { id: 's0', name: 's0', propositions: ['p'], isInitial: true, x: 0, y: 0 },
+        { id: 's1', name: 's1', propositions: [], isInitial: false, x: 0, y: 0 },
+      ],
+      transitions: [{ from: 's0', to: 's1' }],
+    };
+    for (const m of [k, kd]) {
+      for (const phi of ['p', 'q', 'EF q', 'AG p', 'EX p']) {
+        expect(sat(m, `AF (${phi})`).sat).toEqual(sat(m, `!(EG (!(${phi})))`).sat);
+        expect(sat(m, `AG (${phi})`).sat).toEqual(sat(m, `!(EF (!(${phi})))`).sat);
+        expect(sat(m, `AX (${phi})`).sat).toEqual(sat(m, `!(EX (!(${phi})))`).sat);
+      }
+    }
+  });
   it('stores results for every subformula node', () => {
     const root = parseCTL('AG (p -> EF q)');
     const record = checkCTL(k, root);

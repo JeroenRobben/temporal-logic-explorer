@@ -34,15 +34,15 @@ function bfs(succ: Succ, from: string, targets: Set<string>, allowed?: Set<strin
   return null;
 }
 
-/** Walk inside `region` (every region state is assumed to have a successor in
- *  region) until a state repeats, producing a lasso. */
-function lasso(succ: Succ, from: string, region: Set<string>): { path: string[]; loopIndex: number } | null {
+/** Walk inside `region` following any in-region successor until a state
+ *  repeats (lasso) or a dead end is reached (finite maximal path). */
+function walkRegion(succ: Succ, from: string, region: Set<string>): { path: string[]; loopIndex?: number } {
   const indexOf = new Map([[from, 0]]);
   const path = [from];
   let cur = from;
   for (;;) {
     const next = (succ.get(cur) ?? []).find((t) => region.has(t));
-    if (next === undefined) return null;
+    if (next === undefined) return { path }; // dead end — finite maximal path
     if (indexOf.has(next)) return { path: [...path, next], loopIndex: indexOf.get(next)! };
     indexOf.set(next, path.length);
     path.push(next);
@@ -80,15 +80,17 @@ export function findEvidence(
     }
     case 'EG': {
       if (!holds) return null;
-      const l = lasso(succ, from, satOf(root));
-      return l && { ...l, kind: 'witness' };
+      const w = walkRegion(succ, from, satOf(root));
+      return { ...w, kind: 'witness' };
     }
     case 'AF': {
-      // ¬AF φ region: every state in it has a successor in it (deadlocks
-      // vacuously satisfy AF, so they are never in the region).
+      // ¬AF φ region: under maximal-path semantics this region can contain
+      // deadlocks (AF now requires a successor to hold, so deadlocks fail
+      // AF vacuously and land in ¬AF's region); a finite path ending there
+      // IS the counterexample.
       if (holds) return null;
-      const l = lasso(succ, from, compl(satOf(root)));
-      return l && { ...l, kind: 'counterexample' };
+      const w = walkRegion(succ, from, compl(satOf(root)));
+      return { ...w, kind: 'counterexample' };
     }
     case 'EU': {
       if (!holds) return null;

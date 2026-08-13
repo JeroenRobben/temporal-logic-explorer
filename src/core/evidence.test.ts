@@ -80,6 +80,35 @@ describe('findEvidence', () => {
     expect(e.path).toEqual(['s0', 's1', 's2', 's1']);
     expect(e.loopIndex).toBe(1);
   });
+  it('AF counterexample and EG witness can be finite maximal paths on deadlock models', () => {
+    // s0[p] -> s1[] (deadlock, no p): AF p fails at s1 (deadlock, no successor
+    // to discharge AF); the finite maximal path ['s1'] IS the counterexample.
+    const kd: KripkeStructure = {
+      states: [
+        { id: 's0', name: 's0', propositions: ['p'], isInitial: true, x: 0, y: 0 },
+        { id: 's1', name: 's1', propositions: [], isInitial: false, x: 0, y: 0 },
+      ],
+      transitions: [{ from: 's0', to: 's1' }],
+    };
+    const af = parseCTL('AF p');
+    const resAF = findEvidence(kd, checkCTL(kd, af), af, 's1')!;
+    expect(resAF.kind).toBe('counterexample');
+    expect(resAF.path).toEqual(['s1']);
+    expect(resAF.loopIndex).toBeUndefined();
+
+    // s0[p] -> s1[p] (deadlock, p holds): the finite maximal path s0->s1
+    // satisfies G p throughout, so EG p holds at s0; the witness is that
+    // finite path ending at the deadlock (no loop).
+    const kd2: KripkeStructure = {
+      ...kd,
+      states: kd.states.map((s) => ({ ...s, propositions: ['p'] })),
+    };
+    const eg = parseCTL('EG p');
+    const resEG = findEvidence(kd2, checkCTL(kd2, eg), eg, 's0')!;
+    expect(resEG.kind).toBe('witness');
+    expect(resEG.path).toEqual(['s0', 's1']);
+    expect(resEG.loopIndex).toBeUndefined();
+  });
   it('EU witness respects the φ-restriction on intermediate states', () => {
     const k3: KripkeStructure = {
       states: [

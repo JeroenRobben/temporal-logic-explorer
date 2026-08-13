@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KripkeStructure, allPropositions, stateById } from '../core/kripke';
+import { KripkeStructure, allPropositions, stateById, deadlockStates } from '../core/kripke';
 import { CTLNode, pretty } from '../core/ctl-parser';
 import { LTLNode, pretty as prettyLTL } from '../core/ltl-parser';
 import { StarNode, pretty as prettyStar } from '../core/ctlstar-parser';
@@ -335,6 +335,16 @@ export default function Inspector(props: InspectorProps) {
                 return <div className="muted">No initial states — mark one to check all paths.</div>;
             }
           })()}
+          {deadlockStates(model).length > 0 && (
+            <>
+              <div className="section-title">Warnings</div>
+              <div className="hint">
+                ⚠ Deadlock state(s): {deadlockStates(model).map((d) => stateById(model, d)?.name ?? d).join(', ')}.
+                The ∀ verdict counts only infinite paths — runs that end in a deadlock are ignored
+                (A-formulas can hold vacuously).
+              </div>
+            </>
+          )}
           {graphDetail && (
             <>
               <div className="section-title">Hovered node</div>
@@ -493,8 +503,9 @@ export default function Inspector(props: InspectorProps) {
             <div className="section-title">Warnings</div>
             <div className="hint">
               ⚠ Deadlock state(s): {record.deadlocks.map((d) => stateById(model, d)?.name ?? d).join(', ')}.
-              CTL semantics assume every state has a successor; A-quantified formulas hold
-              vacuously in deadlocks.
+              This CTL tab uses maximal-path semantics: finite runs ending at a deadlock count as
+              paths (AX alone stays vacuously true there). The CTL* and ∀ views count only infinite
+              paths, so verdicts can differ at deadlocks.
             </div>
           </>
         )}

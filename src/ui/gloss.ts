@@ -5,7 +5,7 @@ import { Logic } from './types';
 
 type AnyNode = CTLNode | LTLNode | StarNode;
 
-const MAX_DEPTH = 3;
+const MAX_DEPTH = 4;
 
 /** Bounded-depth English paraphrase of a formula. Depth counts operator
  *  nesting; structure below MAX_DEPTH renders as an ellipsis. */

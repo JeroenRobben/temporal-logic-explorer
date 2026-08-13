@@ -18,14 +18,14 @@ describe('glossify', () => {
   });
   it('renders CTL* quantifiers', () => {
     expect(glossify(parseCTLStar('A G (E F p)'), 'ctlstar'))
-      .toBe('on every path, at every step, on some path, …');
+      .toBe('on every path, at every step, on some path, eventually p');
   });
   it('renders booleans', () => {
     expect(glossify(parseCTL('p & !q'), 'ctl')).toBe('p and not q');
     expect(glossify(parseLTL('p <-> q'), 'ltl')).toBe('p exactly when q');
   });
-  it('bounds depth at 3 with ellipsis', () => {
-    const g = glossify(parseLTL('G (F (X (p U q)))'), 'ltl');
-    expect(g).toBe('at every step, eventually in the next step, …');
+  it('bounds depth at 4 with ellipsis', () => {
+    const g = glossify(parseLTL('G (F (X (G (p U q))))'), 'ltl');
+    expect(g).toBe('at every step, eventually in the next step, at every step, …');
   });
 });

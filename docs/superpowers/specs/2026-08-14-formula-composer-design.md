@@ -40,7 +40,7 @@ Stack (per layout decision):
 
 ### `src/ui/gloss.ts` (new, pure)
 
-`glossify(ast, logic): string` — bounded-depth (3) English paraphrase using the GLOSS vocabulary, ellipsizing deeper structure ("on every path, at every step: on some path, eventually …"). Works over all three AST types (per-logic adapters).
+`glossify(ast, logic): string` — bounded-depth (4) English paraphrase using the GLOSS vocabulary, ellipsizing deeper structure ("on every path, at every step: on some path, eventually …"). Works over all three AST types (per-logic adapters).
 
 ### `src/ui/formulaEdits.ts` (new, pure)
 

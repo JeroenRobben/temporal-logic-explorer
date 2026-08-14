@@ -30,7 +30,6 @@ function slotsFor(patternSlots: SlotName[], scope: Scope): SlotName[] {
 }
 
 export default function PatternPicker({ model, logic, onInsert }: PatternPickerProps) {
-  const [open, setOpen] = useState(false);
   const [patternId, setPatternId] = useState(PATTERNS[0].id);
   const [scope, setScope] = useState<Scope>('globally');
   // CTL only exists under Globally; a CTL entry tab still gets a valid default.
@@ -55,18 +54,9 @@ export default function PatternPicker({ model, logic, onInsert }: PatternPickerP
     if (next !== 'globally' && logicChoice === 'ctl') setLogicChoice('ltl');
   }
 
-  if (!open) {
-    return (
-      <div className="composer-row">
-        <button className="pattern-toggle" onClick={() => setOpen(true)}>Patterns</button>
-      </div>
-    );
-  }
-
   return (
     <div className="pattern-picker">
       <div className="composer-row">
-        <button className="pattern-toggle" onClick={() => setOpen(false)}>Patterns</button>
         <select aria-label="Pattern" value={patternId}
           onChange={(e) => { setPatternId(e.target.value); setFills({}); }}>
           {PATTERNS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

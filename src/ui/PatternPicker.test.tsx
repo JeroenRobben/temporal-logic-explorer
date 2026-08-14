@@ -31,15 +31,15 @@ function Harness({ initial = 'ctl' as Logic }) {
 }
 
 function openPicker() {
-  fireEvent.click(screen.getByText('Patterns'));
+  fireEvent.click(screen.getByText('⧉ Patterns')); // opens the workbench drawer in patterns mode
   return document.querySelector('.pattern-picker') as HTMLElement;
 }
 
 describe('PatternPicker in the composer', () => {
-  it('renders as a collapsed disclosure row; opening shows dropdowns and logic toggle', () => {
+  it('is hidden until opened; opening shows dropdowns and logic toggle', () => {
     render(<Harness />);
-    expect(screen.getByText('Patterns')).toBeTruthy();
-    expect(document.querySelector('.pattern-picker')).toBeNull(); // collapsed by default
+    expect(screen.getByText('⧉ Patterns')).toBeTruthy();
+    expect(document.querySelector('.pattern-picker')).toBeNull(); // closed by default
     const picker = openPicker();
     expect(picker).toBeTruthy();
     expect(within(picker).getByLabelText('Pattern')).toBeTruthy();
@@ -111,6 +111,6 @@ describe('PatternPicker in the composer', () => {
         onSwitchLogic={() => {}} onOpenLearn={() => {}}
       />,
     );
-    expect(screen.queryByText('Patterns')).toBeNull();
+    expect(screen.queryByText('⧉ Patterns')).toBeNull();
   });
 });

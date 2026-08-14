@@ -24,6 +24,8 @@ import { EXAMPLES } from './examples';
 import { useHistory } from './useHistory';
 import Header from './Header';
 import FormulaPanel from './FormulaPanel';
+import { WORKBENCH_SLOT_ID } from './Composer';
+import { WorkbenchMode } from './Workbench';
 import Canvas, { Highlight } from './Canvas';
 import GraphView, { RenderGraph } from './GraphView';
 import Inspector from './Inspector';
@@ -63,6 +65,10 @@ export default function App() {
   const [treeHover, setTreeHover] = useState<string | null>(null);
   const [gestureNotice, setGestureNotice] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<'inspect' | 'learn'>('inspect');
+  // Workbench drawer (builder/patterns): state lives here because the
+  // launcher buttons sit in the left-pane composer while the drawer itself
+  // is portaled into the center pane's slot below.
+  const [workbench, setWorkbench] = useState<WorkbenchMode | null>(null);
   const [learnRefId, setLearnRefId] = useState<string | null>(null);
   const [tutorial, setTutorial] = useState<{ id: string; step: number } | null>(null);
   const learnStash = useRef<(SavedState & { activeFormulaId: string | null }) | null>(null);
@@ -723,6 +729,8 @@ export default function App() {
             onUpdate={updateFormula}
             onSwitchLogic={setEntryLogic}
             onOpenLearn={openLearnRef}
+            workbench={workbench}
+            onOpenWorkbench={setWorkbench}
             onRemove={(id) => {
               setFormulas((f) => f.filter((x) => x.id !== id));
               if (selectedFormulaId === id) setSelection(null);
@@ -809,6 +817,8 @@ export default function App() {
               })()}
             </div>
           </div>
+          {/* Portal target: the composer renders the workbench drawer here. */}
+          <div className="workbench-slot" id={WORKBENCH_SLOT_ID} />
         </div>
         <div className="pane right">
           <div className="view-tabs right-tabs">

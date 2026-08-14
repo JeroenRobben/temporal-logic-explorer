@@ -209,15 +209,15 @@ describe('BuilderView in the composer', () => {
       .find((b) => b.textContent === 'AG' && !b.closest('.builder-view')) as HTMLButtonElement;
     expect(chip().disabled).toBe(false);
     expect(opBtn().disabled).toBe(false);
-    expect(document.querySelector('.pattern-toggle')).toBeTruthy();
+    expect(screen.getByText('⧉ Patterns')).toBeTruthy(); // patterns entry point available
     toggleBuilder();
     expect(chip().disabled).toBe(true);
     expect(opBtn().disabled).toBe(true);
-    expect(document.querySelector('.pattern-toggle')).toBeNull();
+    expect(document.querySelector('.pattern-picker')).toBeNull(); // patterns UI not co-active with builder
     fireEvent.click(screen.getByText('⌗ Builder')); // off again
     expect(chip().disabled).toBe(false);
     expect(opBtn().disabled).toBe(false);
-    expect(document.querySelector('.pattern-toggle')).toBeTruthy();
+    expect(screen.getByText('⧉ Patterns')).toBeTruthy();
   });
 
   it('failed import collapses the draft to the single hole the builder holds', () => {

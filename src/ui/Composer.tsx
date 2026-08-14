@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { KripkeStructure, allPropositions } from '../core/kripke';
 import { parseCTL, ParseError, CTLNode } from '../core/ctl-parser';
 import { parseLTL, LTLNode } from '../core/ltl-parser';
@@ -12,6 +13,7 @@ import { glossify } from './gloss';
 import { REF_BY_PALETTE } from '../learn/content';
 import PatternPicker from './PatternPicker';
 import BuilderView from './BuilderView';
+import Workbench, { WorkbenchMode } from './Workbench';
 
 type ParsedState = { ast: CTLNode | LTLNode | StarNode } | { error: ParseError } | null;
 
@@ -23,7 +25,16 @@ interface ComposerProps {
   onCancelEdit: () => void;
   onSwitchLogic: (l: Logic) => void;
   onOpenLearn: (id: string) => void;
+  /** Workbench drawer state, owned by App (drawer renders in the center pane
+   *  while the launcher buttons live here). Optional: when absent the
+   *  composer self-manages, so it stays usable standalone (and in tests). */
+  workbench?: WorkbenchMode | null;
+  onOpenWorkbench?: (m: WorkbenchMode | null) => void;
 }
+
+/** App marks its center-pane drawer slot with this id; the composer portals
+ *  the workbench content into it (falling back to inline render without it). */
+export const WORKBENCH_SLOT_ID = 'workbench-slot';
 
 const HOLE = '▢';
 
@@ -80,9 +91,27 @@ function prettyOf(logic: Logic, ast: unknown): string {
   return prettyStar(ast as Parameters<typeof prettyStar>[0]);
 }
 
-export default function Composer({ logic, model, editing, onSave, onCancelEdit, onSwitchLogic, onOpenLearn }: ComposerProps) {
+export default function Composer({
+  logic, model, editing, onSave, onCancelEdit, onSwitchLogic, onOpenLearn,
+  workbench: workbenchProp, onOpenWorkbench,
+}: ComposerProps) {
   const [draft, setDraft] = useState('');
-  const [builderOpen, setBuilderOpen] = useState(false);
+  // Controlled (App owns the drawer state) with an uncontrolled fallback.
+  const [localWorkbench, setLocalWorkbench] = useState<WorkbenchMode | null>(null);
+  const workbench = workbenchProp !== undefined ? workbenchProp : localWorkbench;
+  const setWorkbench = onOpenWorkbench ?? setLocalWorkbench;
+  // Patterns is unavailable while editing a row (it always was); an open
+  // patterns drawer is suppressed for the duration of the edit.
+  const effWorkbench = workbench === 'patterns' && editing ? null : workbench;
+  // The drawer's builder mode drives the EXACT pre-drawer builderOpen logic:
+  // readonly textarea, writer lockout, keyed remount seeding.
+  const builderOpen = effWorkbench === 'builder';
+  // Center-pane portal target (App renders the slot); standalone composers
+  // (tests) have no slot and render the drawer inline instead.
+  const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setSlotEl(document.getElementById(WORKBENCH_SLOT_ID));
+  }, []);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const hlRef = useRef<HTMLDivElement>(null);
   const preEditDraft = useRef<string>('');
@@ -229,19 +258,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
             onScroll={() => { if (hlRef.current && taRef.current) hlRef.current.scrollLeft = taRef.current.scrollLeft; }}
           />
         </div>
-        <button className="builder-toggle" aria-pressed={builderOpen}
-          title="Build the formula structurally"
-          onClick={() => setBuilderOpen((o) => !o)}>
-          ⌗ Builder
-        </button>
       </div>
-      {builderOpen && (
-        // Keyed so a logic change (or entering/leaving row editing) remounts
-        // the builder, reseeding it from the current draft; reopening the
-        // toggle reseeds the same way via unmount/remount.
-        <BuilderView key={`${effLogic}:${editingId ?? ''}`}
-          logic={effLogic} model={model} initialText={draft} onChange={setDraft} />
-      )}
       <div className="composer-status">
         {(() => {
           if (draft.trim() === '') return null;
@@ -305,31 +322,64 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
           );
         })}
       </div>
-      {!editing && !builderOpen && (
-        <PatternPicker model={model} logic={logic}
-          onInsert={(text, l) => {
-            if (l !== logic) onSwitchLogic(l);
-            // Same post-update mechanism as insertAtCaret: stash the target
-            // selection, let the [draft] effect focus + select once React
-            // commits. First hole if any, else caret at the end.
-            const hole = text.indexOf(HOLE);
-            if (text === draft) {
-              // setDraft would bail (same value) and the [draft] effect never
-              // runs — select immediately instead of leaving a stale pending
-              // selection to yank the caret on the next unrelated edit.
-              const ta = taRef.current;
-              if (ta) {
-                ta.focus();
-                if (hole >= 0) ta.setSelectionRange(hole, hole + 1);
-              }
-              return;
-            }
-            pendingSelect.current = hole >= 0
-              ? { start: hole, end: hole + 1 }
-              : { start: text.length, end: text.length };
-            setDraft(text);
-          }} />
-      )}
+      <div className="composer-row workbench-launchers">
+        <button className="workbench-launcher" aria-pressed={workbench === 'builder'}
+          title="Build the formula structurally"
+          onClick={() => setWorkbench(workbench === 'builder' ? null : 'builder')}>
+          ⌗ Builder
+        </button>
+        {!editing && (
+          <button className="workbench-launcher" aria-pressed={workbench === 'patterns'}
+            title="Insert a specification pattern"
+            onClick={() => setWorkbench(workbench === 'patterns' ? null : 'patterns')}>
+            ⧉ Patterns
+          </button>
+        )}
+      </div>
+      {effWorkbench !== null && (() => {
+        const t = draft.trim();
+        const livePretty = t === ''
+          ? null
+          : parsed && 'ast' in parsed ? prettyOf(effLogic, parsed.ast) : t;
+        const drawer = (
+          <Workbench mode={effWorkbench} pretty={livePretty} allowPatterns={!editing}
+            onMode={setWorkbench} onClose={() => setWorkbench(null)}>
+            {effWorkbench === 'builder' ? (
+              // Keyed so a logic change (or entering/leaving row editing)
+              // remounts the builder, reseeding it from the current draft;
+              // reopening the drawer reseeds the same way via unmount/remount.
+              <BuilderView key={`${effLogic}:${editingId ?? ''}`}
+                logic={effLogic} model={model} initialText={draft} onChange={setDraft} />
+            ) : (
+              <PatternPicker model={model} logic={logic}
+                onInsert={(text, l) => {
+                  setWorkbench(null); // Insert closes the drawer…
+                  if (l !== logic) onSwitchLogic(l);
+                  // …and focuses the first hole: same post-update mechanism as
+                  // insertAtCaret — stash the target selection, let the [draft]
+                  // effect focus + select once React commits.
+                  const hole = text.indexOf(HOLE);
+                  if (text === draft) {
+                    // setDraft would bail (same value) and the [draft] effect never
+                    // runs — select immediately instead of leaving a stale pending
+                    // selection to yank the caret on the next unrelated edit.
+                    const ta = taRef.current;
+                    if (ta) {
+                      ta.focus();
+                      if (hole >= 0) ta.setSelectionRange(hole, hole + 1);
+                    }
+                    return;
+                  }
+                  pendingSelect.current = hole >= 0
+                    ? { start: hole, end: hole + 1 }
+                    : { start: text.length, end: text.length };
+                  setDraft(text);
+                }} />
+            )}
+          </Workbench>
+        );
+        return slotEl ? createPortal(drawer, slotEl) : drawer;
+      })()}
     </div>
   );
 }

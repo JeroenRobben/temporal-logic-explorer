@@ -39,17 +39,21 @@ describe('learn ? links', () => {
     expect(screen.getByText('Exists-Finally (reachability)')).toBeTruthy();
   });
 
-  it('palette buttons without a mapped reference render no ?', () => {
+  it('every palette button renders a mapped ? link (Tasks 8-10 complete)', () => {
+    // The unmapped⇒no-? behaviour was asserted here while content tasks were
+    // in flight; Task 10 mapped the last palette buttons (CTL* A/E → star-A/
+    // star-E), so no genuinely unmapped palette element remains to test it on.
     render(<App />);
-    // Task 9 landed the CTL Until references — the snippets are now mapped
     expect(screen.getByText('A[▢U▢]')).toBeTruthy(); // the button itself exists
     expect(document.querySelector('[data-learn="palette-A[▢U▢]"]')).toBeTruthy();
     expect(document.querySelector('[data-learn="palette-E[▢U▢]"]')).toBeTruthy();
-    // the CTL* quantifier buttons stay unmapped until Task 10 lands star-A/star-E
     fireEvent.click(within(document.querySelector('.header')!).getByText('CTL*'));
     expect(within(document.querySelector('.composer-row:last-child')!).getByText('A')).toBeTruthy();
-    expect(document.querySelector('[data-learn="palette-A"]')).toBeNull();
-    expect(document.querySelector('[data-learn="palette-E"]')).toBeNull();
+    const aQ = document.querySelector('[data-learn="palette-A"]');
+    expect(aQ).toBeTruthy();
+    expect(document.querySelector('[data-learn="palette-E"]')).toBeTruthy();
+    fireEvent.click(aQ!);
+    expect(screen.getByText('All-paths quantifier')).toBeTruthy();
   });
 
   it('inspector anchors exist for tutorial highlights (tree + evidence)', () => {

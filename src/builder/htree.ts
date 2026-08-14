@@ -1,4 +1,7 @@
 import type { Logic } from '../ui/types';
+import { parseCTL } from '../core/ctl-parser';
+import { parseLTL } from '../core/ltl-parser';
+import { parseCTLStar } from '../core/ctlstar-parser';
 
 /**
  * Hole-tolerant formula tree for the visual builder. The parsers' ASTs
@@ -111,6 +114,53 @@ const BINARY_SYMBOL: Partial<Record<OpId, string>> = {
  */
 export function toText(tree: HNode, _logic: Logic): string {
   return render(tree);
+}
+
+/** OpId kinds each logic's parser can produce (kind strings match OpIds). */
+const LOGIC_OPS: Record<Logic, ReadonlySet<string>> = {
+  ctl: new Set(['not', 'and', 'or', 'implies', 'iff',
+    'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU']),
+  ltl: new Set(['not', 'and', 'or', 'implies', 'iff', 'X', 'F', 'G', 'U']),
+  ctlstar: new Set(['not', 'and', 'or', 'implies', 'iff',
+    'X', 'F', 'G', 'U', 'A', 'E']),
+};
+
+/** Minimal structural view of the three parsers' AST nodes. */
+interface AstNode {
+  kind: string;
+  name?: string;
+  child?: AstNode;
+  left?: AstNode;
+  right?: AstNode;
+}
+
+/**
+ * Parse `text` with the logic's parser and convert the AST into an HNode
+ * (never containing holes). Parse errors or unexpected AST kinds → null.
+ */
+export function fromAst(logic: Logic, text: string): HNode | null {
+  let ast: AstNode;
+  try {
+    if (logic === 'ctl') ast = parseCTL(text) as AstNode;
+    else if (logic === 'ltl') ast = parseLTL(text) as AstNode;
+    else ast = parseCTLStar(text) as AstNode;
+  } catch { return null; }
+  return convert(ast, LOGIC_OPS[logic]);
+}
+
+function convert(n: AstNode, ops: ReadonlySet<string>): HNode | null {
+  if (n.kind === 'true') return { kind: 'const', value: true };
+  if (n.kind === 'false') return { kind: 'const', value: false };
+  if (n.kind === 'prop') return { kind: 'prop', name: n.name as string };
+  if (!ops.has(n.kind)) return null;
+  const op = n.kind as OpId;
+  if (ARITY[op] === 1) {
+    const c = convert(n.child as AstNode, ops);
+    return c === null ? null : { kind: 'op', op, children: [c] };
+  }
+  const l = convert(n.left as AstNode, ops);
+  const r = convert(n.right as AstNode, ops);
+  return l === null || r === null ? null : { kind: 'op', op, children: [l, r] };
 }
 
 function render(n: HNode): string {

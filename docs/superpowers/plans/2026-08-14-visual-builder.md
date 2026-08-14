@@ -30,11 +30,11 @@
 
 **Files:** Modify `src/builder/htree.ts`; Test `src/builder/roundtrip.test.ts`.
 
-- [ ] **Step 1: Failing tests:**
+- [x] **Step 1: Failing tests:**
   - `fromAst(logic, text)` on hand cases per logic (CTL `AG (p -> EF q)`, LTL `G (p -> F q)`, CTL* `A (G (F p))`) produces the expected HNode shapes; parse errors → null; **verify each parser's real AST kind strings before mapping** (CTL kinds: true/false/prop/not/and/or/implies/iff/EX/AX/EF/AF/EG/AG/EU/AU; check LTL for const kinds; check CTL* quantifier/temporal kinds).
   - Round-trip property, ~500 random complete trees per logic (seeded mulberry32; generate by random legal choices with depth cap 5, leaf-bias at the cap): `parseForLogic(logic, toText(t))` non-null AND `fromAst(logic, toText(t))` structurally equals `t` (deep-compare; consts/props/ops).
   - Corpus import: every parseable formula string in the repo's content — pull `patterns` fields from `REFERENCES` (learn) with each doc's parse logic, and every `PATTERNS` cell fully instantiated (P→p,S→s,q→q,r→r) in its logic — must `fromAst` non-null and round-trip `toText→parse` successfully.
-- [ ] **Step 2: FAIL** → **Step 3: implement `fromAst`** (per-logic recursive kind→OpId mapping; unknown kind → null overall). **Step 4: PASS + full suite.** **Step 5: Commit** `feat(builder): fromAst + round-trip property batteries`.
+- [x] **Step 2: FAIL** → **Step 3: implement `fromAst`** (per-logic recursive kind→OpId mapping; unknown kind → null overall). **Step 4: PASS + full suite.** **Step 5: Commit** `feat(builder): fromAst + round-trip property batteries`.
 
 ### Task 3: catalog — position-aware legality
 

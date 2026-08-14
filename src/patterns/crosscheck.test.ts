@@ -90,6 +90,11 @@ describe('pattern template cross-check fuzz', () => {
     expect(skipped).toBeLessThan(total * 0.1);
   });
 
+  // NOTE: limited independent power — checkCTLStar on `A (φ)` runs the same
+  // Büchi pipeline as checkLTLAllPaths on `φ`, so this is a checker-consistency
+  // check, not template validation. The Globally LTL↔CTL battery above (two
+  // independent formulations, two independent checkers) is the one that
+  // actually validates template derivations.
   it('Before-r and After-q: LTL all-paths verdict matches CTL* verdict (5 patterns x 2 scopes x 100 models)', () => {
     const rand = mulberry32(20260815);
     let total = 0;

@@ -133,7 +133,7 @@ describe('instantiate mechanics', () => {
     const t = byId('response').scopes.before.ltl; // S appears once, r four times
     const inst = instantiate(t, { S: 'x' });
     expect(inst).not.toMatch(/\bS\b/);
-    expect((inst.match(/\bx\b/g) ?? []).length).toBeGreaterThan(0);
+    expect((inst.match(/\bx\b/g) ?? []).length).toBe(1);
     // Every r site turned into a hole, consistently.
     const rFilled = instantiate(t, { r: 'x' });
     expect(rFilled).not.toMatch(/\br\b/);

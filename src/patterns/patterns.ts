@@ -2,7 +2,8 @@
  *
  *  Templates are written with slot tokens `P S q r` — idents reserved to the
  *  template language, never user props. LTL forms are Dwyer's published
- *  mappings (W expanded via `φ W ψ ≡ G φ ∨ (φ U ψ)`); every CTL* form is the
+ *  mappings (W expanded via `φ W ψ ≡ G φ ∨ (φ U ψ)`), except precedence/after
+ *  which is deliberately strengthened — see the note at that cell; every CTL* form is the
  *  A-wrapped LTL path formula (Prop 5.4.1); plain CTL is offered only under
  *  the Globally scope — Dwyer's scoped CTL mappings need weak-until.
  */
@@ -84,6 +85,10 @@ export const PATTERNS: PatternDef[] = [
     scopes: {
       globally: cell('G (! P) | ((! P) U S)', '! E[(! S) U (P & ! S)]'),
       before: cell('F r -> ((! P) U (S | r))'),
+      // Deliberately stronger than Dwyer's published `[]!Q | <>(Q & (!P W S))`:
+      // this form anchors the scope at the FIRST q (Dwyer's ∃-form would let a
+      // later q open a clean sub-scope, e.g. trace [q][p][q][s] satisfies
+      // Dwyer's but not ours). First-q matches the intended "After q" reading.
       after: cell('G (! q) | ((! q) U (q & (G (! P) | ((! P) U S))))'),
     },
   },

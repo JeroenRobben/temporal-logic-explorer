@@ -39,7 +39,7 @@ function patternDoc(id: string, bits: DocBits): ReferenceDoc {
     symbol: display(globally.ltl),
     name: `${d.name} — ${bits.reading}`,
     informal: bits.informal,
-    formal: `Globally scope: ${globally.ltl}`,
+    formal: `Globally scope: ${display(globally.ltl)}`,
     equivalences: [
       `CTL (globally): ${display(globally.ctl!)}`,
       `CTL*: ${display(globally.ctlstar)}`,

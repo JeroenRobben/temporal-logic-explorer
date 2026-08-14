@@ -48,4 +48,4 @@
 
 ### Task 5: Finish
 
-- [ ] Full `npm test` + `npx tsc --noEmit`; verify the tokens drift test covers styles.css + all four SVG components; report final counts and a list of what needs the by-hand visual QA pass (light/dark × canvas tabs × drawer modes).
+- [x] Full `npm test` + `npx tsc --noEmit`; verify the tokens drift test covers styles.css + all four SVG components; report final counts and a list of what needs the by-hand visual QA pass (light/dark × canvas tabs × drawer modes).

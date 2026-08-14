@@ -24,6 +24,7 @@ import FormulaPanel from './FormulaPanel';
 import Canvas, { Highlight } from './Canvas';
 import GraphView, { RenderGraph } from './GraphView';
 import Inspector from './Inspector';
+import LearnPanel from './LearnPanel';
 import Timeline from './Timeline';
 import TreeView, { TreeEvidence } from './TreeView';
 
@@ -57,6 +58,8 @@ export default function App() {
   const [graphHover, setGraphHover] = useState<string | null>(null);
   const [treeHover, setTreeHover] = useState<string | null>(null);
   const [gestureNotice, setGestureNotice] = useState<string | null>(null);
+  const [rightTab, setRightTab] = useState<'inspect' | 'learn'>('inspect');
+  const [learnRefId, setLearnRefId] = useState<string | null>(null);
   const treeAvailable = model.states.some((s) => s.isInitial);
   const layoutAnim = useRef<number | null>(null);
 
@@ -650,6 +653,17 @@ export default function App() {
           </div>
         </div>
         <div className="pane right">
+          <div className="view-tabs right-tabs">
+            <button className={`tab ${rightTab === 'inspect' ? 'active' : ''}`}
+              onClick={() => setRightTab('inspect')}>Inspector</button>
+            <button className={`tab ${rightTab === 'learn' ? 'active' : ''}`}
+              onClick={() => setRightTab('learn')}>Learn</button>
+          </div>
+          {rightTab === 'learn' ? (
+            <LearnPanel refId={learnRefId} tutorial={null} view={null}
+              onOpenRef={setLearnRefId} onStartTutorial={() => {}} onExitTutorial={() => {}}
+              onNext={() => {}} onBack={() => {}} onShowMe={() => {}} />
+          ) : (
           <Inspector
             model={model}
             onChange={commitModel}
@@ -669,6 +683,7 @@ export default function App() {
             onFormulaEdit={applyFormulaEdit}
             gestureNotice={gestureNotice}
           />
+          )}
         </div>
       </div>
       {(trace !== null || activeLTLAnalysis !== null || traceNotice !== null) && (

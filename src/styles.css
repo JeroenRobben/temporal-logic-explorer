@@ -127,3 +127,25 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .editing-banner { background: #ebf4ff; border: 1px solid #2b6cb0; border-radius: 4px;
   padding: 2px 8px; font-size: 12px; margin-bottom: 4px; }
 .gesture-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+
+.right-tabs { padding: 0 0 8px; background: transparent; }
+.learn-panel { overflow-y: auto; font-size: 13px; }
+.learn-panel h3 { margin: 8px 0 4px; }
+.learn-panel code { background: #f0f0f0; border-radius: 3px; padding: 0 3px;
+  font-family: ui-monospace, monospace; font-size: 12px; }
+.learn-panel ul { margin: 4px 0; padding-left: 18px; }
+.learn-ref-section { margin-bottom: 10px; }
+.learn-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 6px;
+  border-radius: 4px; cursor: pointer; }
+.learn-row:hover { background: #f0f0f0; }
+.learn-row .learn-symbol { font-family: ui-monospace, monospace; font-weight: 600; }
+.learn-row .learn-name { color: #666; font-size: 12px; }
+.learn-symbol { font-family: ui-monospace, monospace; }
+.learn-back, .learn-exit { border: none; background: none; cursor: pointer; color: #2b6cb0;
+  padding: 4px 0; font-size: 12px; }
+.learn-start { display: block; margin: 10px 0; padding: 4px 10px; border: 1px solid #2b6cb0;
+  border-radius: 4px; background: #ebf4ff; color: #2b6cb0; cursor: pointer; }
+.learn-bookref { margin-top: 8px; }
+.learn-task-status { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.learn-done { color: #2f855a; font-weight: 600; }
+.learn-nav { display: flex; gap: 6px; margin: 8px 0; }

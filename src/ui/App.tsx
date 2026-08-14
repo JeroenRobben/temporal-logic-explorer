@@ -526,6 +526,11 @@ export default function App() {
     if (s.showEvidence !== undefined) setShowEvidence(s.showEvidence);
   }
 
+  function openLearnRef(id: string) {
+    setLearnRefId(id);
+    setRightTab('learn');
+  }
+
   function startTutorial(id: string) {
     const def = TUTORIALS.find((t) => t.id === id);
     if (!def) return;
@@ -691,6 +696,7 @@ export default function App() {
             model={model}
             onUpdate={updateFormula}
             onSwitchLogic={setEntryLogic}
+            onOpenLearn={openLearnRef}
             onRemove={(id) => {
               setFormulas((f) => f.filter((x) => x.id !== id));
               if (selectedFormulaId === id) setSelection(null);
@@ -812,6 +818,7 @@ export default function App() {
             starEvidence={starEvidence}
             onFormulaEdit={applyFormulaEdit}
             gestureNotice={gestureNotice}
+            onOpenLearn={openLearnRef}
           />
           )}
         </div>

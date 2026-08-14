@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { KripkeStructure, allPropositions } from '../core/kripke';
 import { parseCTL, ParseError, CTLNode } from '../core/ctl-parser';
 import { parseLTL, LTLNode } from '../core/ltl-parser';
@@ -9,6 +9,7 @@ import { pretty as prettyStar } from '../core/ctlstar-parser';
 import { Logic, LOGIC_LABEL } from './types';
 import { tokenize } from './highlight';
 import { glossify } from './gloss';
+import { REF_BY_PALETTE } from '../learn/content';
 
 type ParsedState = { ast: CTLNode | LTLNode | StarNode } | { error: ParseError } | null;
 
@@ -19,6 +20,7 @@ interface ComposerProps {
   onSave: (text: string) => void;
   onCancelEdit: () => void;
   onSwitchLogic: (l: Logic) => void;
+  onOpenLearn: (id: string) => void;
 }
 
 const HOLE = '▢';
@@ -76,7 +78,7 @@ function prettyOf(logic: Logic, ast: unknown): string {
   return prettyStar(ast as Parameters<typeof prettyStar>[0]);
 }
 
-export default function Composer({ logic, model, editing, onSave, onCancelEdit, onSwitchLogic }: ComposerProps) {
+export default function Composer({ logic, model, editing, onSave, onCancelEdit, onSwitchLogic, onOpenLearn }: ComposerProps) {
   const [draft, setDraft] = useState('');
   const taRef = useRef<HTMLTextAreaElement>(null);
   const hlRef = useRef<HTMLDivElement>(null);
@@ -198,7 +200,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
   return (
     <div className="composer">
       {editing && <div className="editing-banner">editing — Enter saves, Esc cancels</div>}
-      <div className="composer-input-wrap">
+      <div className="composer-input-wrap" data-learn="palette-input">
         <div className="composer-highlight" ref={hlRef} aria-hidden="true">
           {tokenize(draft, effLogic).map((t, i) => (
             <span key={i} className={t.cls === 'space' ? undefined : `tok-${t.cls}`}>{t.text}</span>
@@ -257,12 +259,22 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
         {allPropositions(model).length === 0 && <span className="muted">no propositions yet</span>}
       </div>
       <div className="composer-row">
-        {palette(effLogic).map((entry) => (
-          <button key={entry.label} className="op-btn" title={entry.gloss}
-            onClick={() => insertAtCaret(entry.insert, entry.template)}>
-            {entry.label}
-          </button>
-        ))}
+        {palette(effLogic).map((entry) => {
+          const refId = REF_BY_PALETTE[entry.label];
+          return (
+            <Fragment key={entry.label}>
+              <button className="op-btn" title={entry.gloss}
+                onClick={() => insertAtCaret(entry.insert, entry.template)}>
+                {entry.label}
+              </button>
+              {refId && (
+                <button className="learn-q" title="What is this?"
+                  data-learn={`palette-${entry.label}`}
+                  onClick={() => onOpenLearn(refId)}>?</button>
+              )}
+            </Fragment>
+          );
+        })}
       </div>
     </div>
   );

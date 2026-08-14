@@ -127,6 +127,9 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .editing-banner { background: #ebf4ff; border: 1px solid #2b6cb0; border-radius: 4px;
   padding: 2px 8px; font-size: 12px; margin-bottom: 4px; }
 .gesture-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.learn-q { border: 1px solid #cbd5e0; border-radius: 10px; padding: 0 6px; background: #fff;
+  color: #718096; cursor: pointer; font-size: 11px; margin-left: -2px; }
+.learn-q:hover { color: #2b6cb0; border-color: #2b6cb0; }
 
 .right-tabs { padding: 0 0 8px; background: transparent; }
 .learn-panel { overflow-y: auto; font-size: 13px; }

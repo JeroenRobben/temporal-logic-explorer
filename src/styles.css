@@ -149,3 +149,11 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .learn-task-status { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
 .learn-done { color: #2f855a; font-weight: 600; }
 .learn-nav { display: flex; gap: 6px; margin: 8px 0; }
+
+.tutorial-banner { display: flex; align-items: center; gap: 8px; background: #fffbeb;
+  border: 1px solid #f59e0b; border-radius: 4px; padding: 2px 8px; font-size: 12px;
+  margin-bottom: 4px; }
+.tutorial-banner .linkish { margin-left: auto; border: none; background: none;
+  color: #b45309; cursor: pointer; font-size: 12px; }
+.learn-dot { color: #f59e0b; margin-left: 4px; }
+.learn-ring { outline: 2px solid #f59e0b; outline-offset: 2px; border-radius: 4px; }

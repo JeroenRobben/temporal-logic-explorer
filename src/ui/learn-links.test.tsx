@@ -48,7 +48,9 @@ describe('learn ? links', () => {
     expect(document.querySelector('[data-learn="palette-A[▢U▢]"]')).toBeTruthy();
     expect(document.querySelector('[data-learn="palette-E[▢U▢]"]')).toBeTruthy();
     fireEvent.click(within(document.querySelector('.header')!).getByText('CTL*'));
-    expect(within(document.querySelector('.composer-row:last-child')!).getByText('A')).toBeTruthy();
+    // re-anchored: the palette row is no longer :last-child since the pattern
+    // picker row landed below it — find the A button among the op buttons.
+    expect([...document.querySelectorAll('.op-btn')].find((b) => b.textContent === 'A')).toBeTruthy();
     const aQ = document.querySelector('[data-learn="palette-A"]');
     expect(aQ).toBeTruthy();
     expect(document.querySelector('[data-learn="palette-E"]')).toBeTruthy();

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from 'react';
 import { KripkeStructure, KripkeState, stateById, allPropositions, successors } from '../core/kripke';
 import { Evidence } from '../core/evidence';
-import { EVIDENCE_COLOR, TRACE_COLOR } from './colors';
 import { RESERVED_NAMES } from './Inspector';
 import { PendingLasso } from './types';
 
@@ -369,15 +368,15 @@ export default function Canvas(props: CanvasProps) {
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#555" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-dim)" />
           </marker>
           <marker id="arrow-sel" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#2b6cb0" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" />
           </marker>
           <marker id="arrow-ev" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill={EVIDENCE_COLOR} />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--evidence)" />
           </marker>
         </defs>
         <g transform={`translate(${view.tx},${view.ty}) scale(${view.scale})`}>
@@ -389,7 +388,7 @@ export default function Canvas(props: CanvasProps) {
             return (
               <g key={`${t.from}->${t.to}`}>
                 <path d={d} fill="none"
-                  stroke={isSel ? '#2b6cb0' : '#555'} strokeWidth={isSel ? 3 : 1.5}
+                  stroke={isSel ? 'var(--accent)' : 'var(--text-dim)'} strokeWidth={isSel ? 3 : 1.5}
                   markerEnd={isSel ? 'url(#arrow-sel)' : 'url(#arrow)'} />
                 <path className="edge-hit" d={d} fill="none" stroke="transparent" strokeWidth={14}
                   style={{ cursor: 'pointer' }}
@@ -404,23 +403,23 @@ export default function Canvas(props: CanvasProps) {
           })}
           {tempFrom && tempEdge && (
             <line x1={tempFrom.x} y1={tempFrom.y} x2={tempEdge.x} y2={tempEdge.y}
-              stroke="#2b6cb0" strokeWidth={2} strokeDasharray="6 4" />
+              stroke="var(--accent)" strokeWidth={2} strokeDasharray="6 4" />
           )}
           {evidencePairs.map(({ a, b, inLoop }, i) => (
             <path key={`ev-${i}`} className="evidence-path"
               d={edgePath(a, b, a.id !== b.id && hasReverse(a.id, b.id))}
-              fill="none" stroke={EVIDENCE_COLOR}
+              fill="none" stroke="var(--evidence)"
               strokeWidth={inLoop ? 5 : 4} opacity={inLoop ? 1 : 0.85}
               markerEnd="url(#arrow-ev)" />
           ))}
           {loopEntryState && (
             <text x={loopEntryState.x - R - 14} y={loopEntryState.y - R - 2} fontSize={16}
-              fill={EVIDENCE_COLOR} style={{ userSelect: 'none' }}>⟲</text>
+              fill="var(--evidence)" style={{ userSelect: 'none' }}>⟲</text>
           )}
           {tracePairs.map(({ a, b, loopBack }, i) => (
             <path key={`tr-${i}`}
               d={edgePath(a, b, a.id !== b.id && hasReverse(a.id, b.id))}
-              fill="none" stroke={TRACE_COLOR} strokeWidth={3.5} opacity={0.8}
+              fill="none" stroke="var(--trace)" strokeWidth={3.5} opacity={0.8}
               strokeDasharray={loopBack ? '8 5' : undefined} />
           ))}
           {model.states.map((s) => {
@@ -443,36 +442,36 @@ export default function Canvas(props: CanvasProps) {
                     strokeWidth={isFresh ? 5 : 3.5} />
                 )}
                 {dropTargetId === s.id && (
-                  <circle cx={s.x} cy={s.y} r={R + 5} fill="none" stroke="#2b6cb0"
+                  <circle cx={s.x} cy={s.y} r={R + 5} fill="none" stroke="var(--accent)"
                     strokeWidth={3} strokeDasharray="4 3" />
                 )}
                 {s.isInitial && (
                   <path d={`M ${s.x - R - 26} ${s.y - R - 12} L ${s.x - R + 3} ${s.y - R + 15}`}
-                    stroke="#333" strokeWidth={2} markerEnd="url(#arrow)" fill="none" />
+                    stroke="var(--text)" strokeWidth={2} markerEnd="url(#arrow)" fill="none" />
                 )}
-                <circle cx={s.x} cy={s.y} r={R} fill="#fff"
-                  stroke={s.id === selectedStateId ? '#2b6cb0' : '#333'}
+                <circle cx={s.x} cy={s.y} r={R} fill="var(--panel)"
+                  stroke={s.id === selectedStateId ? 'var(--accent)' : 'var(--text)'}
                   strokeWidth={s.id === selectedStateId ? 3 : s.isInitial ? 2.5 : 1.5} />
                 {editing?.stateId !== s.id && (
                   <text x={s.x} y={s.y - 2} textAnchor="middle" fontSize={13} fontWeight={600}
-                    style={{ userSelect: 'none' }}>{s.name}</text>
+                    fill="var(--text)" style={{ userSelect: 'none' }}>{s.name}</text>
                 )}
-                <text x={s.x} y={s.y + 13} textAnchor="middle" fontSize={11} fill="#2b6cb0"
+                <text x={s.x} y={s.y + 13} textAnchor="middle" fontSize={11} fill="var(--accent)"
                   style={{ userSelect: 'none' }}>{s.propositions.join(',')}</text>
                 {deadlocks.has(s.id) && (
-                  <text x={s.x + R - 4} y={s.y - R + 4} fontSize={14} fill="#dd6b20"
+                  <text x={s.x + R - 4} y={s.y - R + 4} fontSize={14} fill="var(--deadlock)"
                     style={{ userSelect: 'none' }}>⚠</text>
                 )}
                 {recordTargets?.has(s.id) && (
                   <circle className="pulse-ring" cx={s.x} cy={s.y} r={R + 8} fill="none"
-                    stroke={TRACE_COLOR} strokeWidth={3} />
+                    stroke="var(--trace)" strokeWidth={3} />
                 )}
                 {hoverStateId === s.id && (
-                  <circle cx={s.x} cy={s.y} r={R + 4} fill="none" stroke="#718096"
+                  <circle cx={s.x} cy={s.y} r={R + 4} fill="none" stroke="var(--text-dim)"
                     strokeWidth={2} strokeDasharray="3 3" />
                 )}
                 {traceBadges.has(s.id) && (
-                  <text x={s.x + R + 4} y={s.y - R + 2} fontSize={11} fill={TRACE_COLOR}
+                  <text x={s.x + R + 4} y={s.y - R + 2} fontSize={11} fill="var(--trace)"
                     fontWeight={700} style={{ userSelect: 'none' }}>
                     {traceBadges.get(s.id)!.join(',')}
                   </text>
@@ -486,9 +485,9 @@ export default function Canvas(props: CanvasProps) {
             return (
               <g onPointerDown={(e) => onHandlePointerDown(e, hoverState)}
                 style={{ cursor: 'crosshair' }}>
-                <circle cx={hx} cy={hy} r={HANDLE_R} fill="#2b6cb0" opacity={0.9} />
+                <circle cx={hx} cy={hy} r={HANDLE_R} fill="var(--accent)" opacity={0.9} />
                 <path d={`M ${hx - 4} ${hy} L ${hx + 4} ${hy} M ${hx + 1} ${hy - 3} L ${hx + 4} ${hy} L ${hx + 1} ${hy + 3}`}
-                  stroke="#fff" strokeWidth={1.6} fill="none" />
+                  stroke="var(--on-accent)" strokeWidth={1.6} fill="none" />
               </g>
             );
           })()}

@@ -34,9 +34,9 @@
 
 **Files:** Modify `src/ui/Canvas.tsx`, `src/ui/GraphView.tsx`, `src/ui/TreeView.tsx`, `src/ui/Timeline.tsx` (+ any other inline SVG color sites — grep `#[0-9a-fA-F]` and `fill=|stroke=` across src/ui); extend `src/ui/tokens.test.ts`.
 
-- [ ] **Step 1: Failing test:** extend the drift test to scan the four component files: no raw hex color literals in JSX attributes/style objects (allow them ONLY in a single exported `LEGACY_COLORS` map if one proves necessary — target zero).
-- [ ] **Step 2: FAIL** → **Step 3:** replace inline fills/strokes with `var(--…)` (SVG presentation attributes accept var()) or move to CSS classes; verdict rings/trace/evidence/deadlock/selection colors map to their semantic tokens (spec list). Where an SVG needs a color-mixed variant (e.g. translucent fill), use `color-mix(in srgb, var(--x) 20%, transparent)` in CSS.
-- [ ] **Step 4: PASS + full suite** (canvas tests assert structure, not colors; re-anchor if any color assertions exist, report). **Step 5: Commit** `refactor(ui): canvas SVG colors from tokens`.
+- [x] **Step 1: Failing test:** extend the drift test to scan the four component files: no raw hex color literals in JSX attributes/style objects (allow them ONLY in a single exported `LEGACY_COLORS` map if one proves necessary — target zero).
+- [x] **Step 2: FAIL** → **Step 3:** replace inline fills/strokes with `var(--…)` (SVG presentation attributes accept var()) or move to CSS classes; verdict rings/trace/evidence/deadlock/selection colors map to their semantic tokens (spec list). Where an SVG needs a color-mixed variant (e.g. translucent fill), use `color-mix(in srgb, var(--x) 20%, transparent)` in CSS.
+- [x] **Step 4: PASS + full suite** (canvas tests assert structure, not colors; re-anchor if any color assertions exist, report). **Step 5: Commit** `refactor(ui): canvas SVG colors from tokens`.
 
 ### Task 4: Workbench drawer
 

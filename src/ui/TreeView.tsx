@@ -3,7 +3,6 @@ import { KripkeStructure, stateById } from '../core/kripke';
 import { TreeNode, unfoldTree, countNodes, countUnfoldBounded } from '../core/unfold';
 import { layoutTree, TreePos } from './treeLayout';
 import { PendingLasso } from './types';
-import { EVIDENCE_COLOR, TRACE_COLOR } from './colors';
 
 const NODE_R = 16;
 const MAX_NODES = 800;
@@ -167,7 +166,7 @@ export default function TreeView({ model, highlight, trace, evidence, onHoverNod
                   <line key={`e-${c.key}`}
                     className={onTrace ? 'tree-branch' : onEv ? 'tree-branch-ev' : undefined}
                     x1={np.x} y1={np.y + NODE_R} x2={cp.x} y2={cp.y - NODE_R}
-                    stroke={onTrace ? TRACE_COLOR : onEv ? EVIDENCE_COLOR : '#888'}
+                    stroke={onTrace ? 'var(--trace)' : onEv ? 'var(--evidence)' : 'var(--text-dim)'}
                     strokeWidth={onTrace || onEv ? 3.5 : 1.2} />,
                 );
                 render(c);
@@ -180,9 +179,9 @@ export default function TreeView({ model, highlight, trace, evidence, onHoverNod
                     <circle className="tree-ring" cx={np.x} cy={np.y} r={NODE_R + 4}
                       fill="none" stroke={highlight.color} strokeWidth={3} />
                   )}
-                  <circle cx={np.x} cy={np.y} r={NODE_R} fill="#fff" stroke="#333" strokeWidth={1.2} />
+                  <circle cx={np.x} cy={np.y} r={NODE_R} fill="var(--panel)" stroke="var(--text)" strokeWidth={1.2} />
                   <text x={np.x} y={np.y + 3} textAnchor="middle" fontSize={10}
-                    style={{ userSelect: 'none' }}>
+                    fill="var(--text)" style={{ userSelect: 'none' }}>
                     {st?.name ?? n.stateId}{n.revisit ? ' ⟳' : ''}
                   </text>
                 </g>,
@@ -192,12 +191,12 @@ export default function TreeView({ model, highlight, trace, evidence, onHoverNod
             if (tb?.cutKey) {
               const cp = p(tb.cutKey);
               cuts.push(<text key="tcut" x={cp.x - 8} y={cp.y + NODE_R + 14} fontSize={12}
-                fill={TRACE_COLOR} style={{ userSelect: 'none' }}>↓⟳</text>);
+                fill="var(--trace)" style={{ userSelect: 'none' }}>↓⟳</text>);
             }
             if (eb?.cutKey) {
               const cp = p(eb.cutKey);
               cuts.push(<text key="ecut" x={cp.x + 8} y={cp.y + NODE_R + 14} fontSize={12}
-                fill={EVIDENCE_COLOR} style={{ userSelect: 'none' }}>↓⟳</text>);
+                fill="var(--evidence)" style={{ userSelect: 'none' }}>↓⟳</text>);
             }
             return <g key={t.key + '-' + ti}>{edges}{nodes}{cuts}</g>;
           })}

@@ -7,9 +7,12 @@ import { resolve } from 'node:path';
 // styles.css must define every semantic token in a `:root` light block,
 // provide a `:root[data-theme='dark']` block (empty until Task 2), and
 // name NO raw colors anywhere outside those two token blocks.
+// The SVG canvas components must likewise name no raw colors: fixed colors
+// come from `var(--…)` tokens; only derived per-subformula colors
+// (colorForNode's palette in colors.ts) stay data-driven.
 
-const cssPath = resolve(process.cwd(), 'src/styles.css');
-const css = readFileSync(cssPath, 'utf8');
+const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8');
+const css = read('src/styles.css');
 
 // Normative token names from the spec — surfaces/text, semantics, scale.
 const SURFACE_TOKENS = [
@@ -99,4 +102,24 @@ describe('design token foundation (styles.css)', () => {
     const rgbs = rest.match(/\brgba?\(/g) ?? [];
     expect(rgbs, 'rgb()/rgba() outside token blocks').toEqual([]);
   });
+});
+
+// Task 3: the SVG canvas components read colors from tokens only.
+const CANVAS_FILES = ['Canvas.tsx', 'GraphView.tsx', 'TreeView.tsx', 'Timeline.tsx'];
+const CANVAS_SOURCES: Record<string, string> = Object.fromEntries(
+  CANVAS_FILES.map((f) => [f, read(`src/ui/${f}`)]),
+);
+
+describe('SVG canvases name no raw colors', () => {
+  for (const [name, src] of Object.entries(CANVAS_SOURCES)) {
+    it(`${name} contains no raw hex color literals`, () => {
+      const hexes = src.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+      expect(hexes, `raw hex colors in ${name}: ${hexes.join(', ')}`).toEqual([]);
+    });
+
+    it(`${name} contains no rgb()/rgba() literals`, () => {
+      const rgbs = src.match(/\brgba?\(/g) ?? [];
+      expect(rgbs, `rgb()/rgba() in ${name}`).toEqual([]);
+    });
+  }
 });

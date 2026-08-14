@@ -28,6 +28,11 @@ describe('tutorial replay', () => {
     it(`${t.id}: models valid, formulas parse, checkpoints gated and solvable`, () => {
       let sim = initialSim();
       expect(stepKind(t.steps[t.steps.length - 1])).toBe('info'); // last step concludes
+      // step 0 must pin the full workspace: model, formulas, and trace (null) —
+      // leftover user traces must never pre-satisfy a later checkpoint.
+      expect(t.steps[0].setup?.model, `${t.id} step 0 must pin model`).toBeTruthy();
+      expect(t.steps[0].setup?.formulas, `${t.id} step 0 must pin formulas`).toBeTruthy();
+      expect(t.steps[0].setup?.trace, `${t.id} step 0 must pin trace`).toBeNull();
       for (const [i, step] of t.steps.entries()) {
         if (step.setup) sim = applySim(sim, step.setup);
         // model well-formed: transitions reference existing states, ≥1 initial

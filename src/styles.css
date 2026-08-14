@@ -5,6 +5,9 @@
  * (guarded by src/ui/tokens.test.ts).
  * ------------------------------------------------------------------------- */
 :root {
+  /* Flip native form controls (buttontext/fieldtext), scrollbars, etc. with
+   * the theme — without this, buttons keep black UA text on dark surfaces. */
+  color-scheme: light;
   /* surfaces & text */
   --bg: #fdfdfd;
   --panel: #ffffff;
@@ -53,6 +56,7 @@
 }
 
 :root[data-theme='dark'] {
+  color-scheme: dark;
   /* surfaces & text — true dark neutrals, no pure black/white */
   --bg: #131418;
   --panel: #1b1e24;
@@ -61,7 +65,7 @@
   --border-strong: #49515e;
   --text: #e4e6ea;
   --text-dim: #a3abb8;
-  --text-faint: #6d7684;
+  --text-faint: #8891a0; /* ≥4.5:1 on --bg for the small text that uses it */
   --backdrop: rgba(0, 0, 0, 0.55);
   --hover: color-mix(in srgb, var(--text) 12%, transparent);
   --on-accent: #10141a;

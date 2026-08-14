@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // Drift guard for the design-token architecture (spec:
@@ -104,22 +104,28 @@ describe('design token foundation (styles.css)', () => {
   });
 });
 
-// Task 3: the SVG canvas components read colors from tokens only.
-const CANVAS_FILES = ['Canvas.tsx', 'GraphView.tsx', 'TreeView.tsx', 'Timeline.tsx'];
-const CANVAS_SOURCES: Record<string, string> = Object.fromEntries(
-  CANVAS_FILES.map((f) => [f, read(`src/ui/${f}`)]),
+// Every UI component reads colors from tokens only. (Deliberate exception:
+// colors.ts holds the data-driven colorForNode palette — a .ts file, not
+// scanned here.) Named CSS colors are not scanned (too noisy vs prose).
+const UI_FILES = readdirSync(resolve(process.cwd(), 'src/ui'))
+  .filter((f) => f.endsWith('.tsx') && !f.endsWith('.test.tsx'));
+const UI_SOURCES: Record<string, string> = Object.fromEntries(
+  UI_FILES.map((f) => [f, read(`src/ui/${f}`)]),
 );
 
-describe('SVG canvases name no raw colors', () => {
-  for (const [name, src] of Object.entries(CANVAS_SOURCES)) {
-    it(`${name} contains no raw hex color literals`, () => {
+describe('UI components name no raw colors', () => {
+  it('scans a plausible file set', () => {
+    // Guard against the glob silently matching nothing / missing the canvases.
+    for (const f of ['Canvas.tsx', 'GraphView.tsx', 'TreeView.tsx', 'Timeline.tsx']) {
+      expect(UI_FILES, `expected ${f} in scan set`).toContain(f);
+    }
+  });
+  for (const [name, src] of Object.entries(UI_SOURCES)) {
+    it(`${name} contains no raw color literals`, () => {
       const hexes = src.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
       expect(hexes, `raw hex colors in ${name}: ${hexes.join(', ')}`).toEqual([]);
-    });
-
-    it(`${name} contains no rgb()/rgba() literals`, () => {
-      const rgbs = src.match(/\brgba?\(/g) ?? [];
-      expect(rgbs, `rgb()/rgba() in ${name}`).toEqual([]);
+      const funcs = src.match(/\b(?:rgba?|hsla?|oklch|oklab)\(/g) ?? [];
+      expect(funcs, `color function literals in ${name}: ${funcs.join(', ')}`).toEqual([]);
     });
   }
 });

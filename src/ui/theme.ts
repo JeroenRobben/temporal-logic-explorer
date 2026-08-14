@@ -20,7 +20,14 @@ export function cyclePref(pref: ThemePref): ThemePref {
 }
 
 export function loadPref(): ThemePref {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  // Storage can throw (private mode, blocked embedded contexts) and this runs
+  // during Header render — degrade to 'auto', never crash. Same policy as storage.ts.
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
   return stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto';
 }
 
@@ -39,7 +46,11 @@ export function detachThemeListener(): void {
 
 /** Persist `pref`, set the resolved theme on <html>, and (for 'auto') follow the system. */
 export function applyTheme(pref: ThemePref): void {
-  localStorage.setItem(STORAGE_KEY, pref);
+  try {
+    localStorage.setItem(STORAGE_KEY, pref);
+  } catch {
+    /* preference just won't persist */
+  }
   detachThemeListener();
 
   let systemDark = false;

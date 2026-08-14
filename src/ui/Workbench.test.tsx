@@ -138,6 +138,21 @@ describe('Workbench drawer', () => {
     expect(textarea().readOnly).toBe(true);
   });
 
+  it('an open patterns drawer does not resurrect after an edit ends', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('⧉ Patterns'));
+    expect(drawer()).toBeTruthy();
+
+    const row = [...document.querySelectorAll('.formula-row')]
+      .find((el) => el.textContent!.includes('AF r'))!;
+    fireEvent.click(row.querySelector('[title="Edit"]')!);
+    expect(drawer()).toBeNull(); // suppressed during the edit
+
+    fireEvent.keyDown(textarea(), { key: 'Escape' }); // cancel the edit
+    expect(drawer()).toBeNull(); // and it STAYS closed — no resurrect
+    expect(screen.getByText('⧉ Patterns')).toBeTruthy();
+  });
+
   it('hides the ⧉ Patterns launcher while editing a row', () => {
     render(<App />);
     const row = [...document.querySelectorAll('.formula-row')]

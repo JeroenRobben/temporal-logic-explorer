@@ -141,7 +141,13 @@ export default function Composer({
   }
 
   useEffect(() => {
-    if (editing) taRef.current?.focus();
+    if (editing) {
+      taRef.current?.focus();
+      // Starting an edit CLOSES an open patterns drawer for real (effWorkbench
+      // only masks it per-render) — otherwise it would silently pop back open
+      // when the edit ends.
+      if (workbench === 'patterns') setWorkbench(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 

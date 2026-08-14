@@ -97,7 +97,7 @@ One module per logic area: `booleans.ts`, `ltl.ts`, `ctl.ts`, `ctlstar.ts`, aggr
 
 ## Testing
 
-- **Content battery (the safety net):** for every tutorial, replay all steps applying `setup`; assert every model is well-formed (transitions reference states), every formula parses in its logic, every checkpoint is *not* satisfied by its own step's entry state (no auto-skip) **and is** satisfied after applying its `solution`. For every ReferenceDoc: non-empty sections, `equivalences`/`patterns` formulas parse in the doc's logic, `tutorialId`/`id` cross-links resolve.
+- **Content battery (the safety net):** for every tutorial, replay all steps applying `setup`; assert every model is well-formed (transitions reference states), every formula parses in its logic, every checkpoint is *not* satisfied by its own step's entry state (no auto-skip) **and is** satisfied after applying its `solution`. For every ReferenceDoc: non-empty sections, `patterns` formulas parse in the doc's logic (`equivalences` are display-only strings containing metavariables), `tutorialId`/`id` cross-links resolve.
 - **Engine units:** task/info classification, advance gating, last-step handling.
 - **jsdom integration:** Learn tab renders index; `?` on a palette button opens the right reference; full run-through of one pilot tutorial (EF): start → stash → step setups mutate app → satisfy a checkpoint by clicking in the real UI → finish → workspace restored; Show me satisfies a checkpoint; Exit mid-way restores.
 - Existing 338 tests stay green.

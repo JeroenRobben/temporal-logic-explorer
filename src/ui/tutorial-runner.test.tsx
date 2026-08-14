@@ -93,5 +93,38 @@ describe('tutorial runner', () => {
     expect(screen.getByText('AG p', { selector: '.text' })).toBeTruthy();
     expect(screen.queryByText('EF p', { selector: '.text' })).toBeNull();
     expect(document.querySelector('.tutorial-banner')).toBeNull();
+    // undo history survives exit: one undo steps back to the tutorial's last model
+    const undoBtn = screen.getByText('↩ Undo') as HTMLButtonElement;
+    expect(undoBtn.disabled).toBe(false);
+    fireEvent.click(undoBtn);
+    expect(within(canvasSvg()).getByText('s')).toBeTruthy();
+    expect(within(canvasSvg()).queryByText('mine')).toBeNull();
+  });
+
+  it('does not persist tutorial-sandbox state; saving resumes after Exit', () => {
+    const KEY = 'temporal-logic-explorer-v1';
+    localStorage.setItem(KEY, JSON.stringify({
+      model: {
+        states: [{ id: 'mine', name: 'mine', propositions: ['p'], isInitial: true, x: 100, y: 100 }],
+        transitions: [{ from: 'mine', to: 'mine' }],
+      },
+      formulas: [{ id: 'f-mine', text: 'AG p', logic: 'ctl' }],
+      trace: null,
+    }));
+    startEFTutorial();
+    // sandbox is live on screen, but storage still holds the pre-tutorial workspace
+    expect(within(canvasSvg()).getByText('s')).toBeTruthy();
+    const stored = JSON.parse(localStorage.getItem(KEY)!);
+    expect(stored.model.states.map((s: { id: string }) => s.id)).toEqual(['mine']);
+    expect(stored.formulas.map((f: { text: string }) => f.text)).toEqual(['AG p']);
+    // …and stays that way as the tutorial mutates state
+    fireEvent.click(screen.getByText('Next ▸'));
+    expect(JSON.parse(localStorage.getItem(KEY)!).formulas
+      .map((f: { text: string }) => f.text)).toEqual(['AG p']);
+    // after Exit the save effect resumes: storage matches the restored workspace
+    fireEvent.click(screen.getByText('Exit tutorial'));
+    const after = JSON.parse(localStorage.getItem(KEY)!);
+    expect(after.model.states.map((s: { id: string }) => s.id)).toEqual(['mine']);
+    expect(after.formulas.map((f: { text: string }) => f.text)).toEqual(['AG p']);
   });
 });

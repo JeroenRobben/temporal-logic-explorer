@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { REFERENCES, TUTORIALS, referenceById, REF_BY_PALETTE } from './index';
 import { parseForLogic, stepKind } from '../engine';
 import { initialSim, applySim, viewOf } from '../replay';
+import { validateLasso } from '../../core/trace';
 
 describe('reference docs', () => {
   for (const r of REFERENCES) {
@@ -87,6 +88,14 @@ describe('tutorial replay', () => {
           const solved = applySim(sim, step.solution!);
           expect(step.checkpoint(viewOf(solved)), `${t.id}#${i} solution must satisfy checkpoint`).toBe(true);
           sim = solved; // continue as if the user did it
+          // Solution lassos must validate against the model in force at this step.
+          const solTrace = step.solution!.trace;
+          if (solTrace && solTrace.loopIndex !== null) {
+            expect(
+              validateLasso(sim.model, { stateIds: solTrace.stateIds, loopIndex: solTrace.loopIndex }),
+              `${t.id}#${i} solution lasso must validate against the step's model`,
+            ).toBeNull();
+          }
         }
       }
     });

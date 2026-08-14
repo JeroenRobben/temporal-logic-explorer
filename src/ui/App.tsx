@@ -78,7 +78,12 @@ export default function App() {
     setGraphHover(null);
   }, [activeFormulaId]);
 
-  useEffect(() => { save({ model, formulas, trace }); }, [model, formulas, trace]);
+  // Persistence pauses during a tutorial: the sandbox must never overwrite the
+  // stored pre-tutorial workspace (the stash lives only in a ref, so a refresh
+  // mid-tutorial reloads the last saved pre-tutorial state).
+  useEffect(() => {
+    if (tutorial === null) save({ model, formulas, trace });
+  }, [model, formulas, trace, tutorial]);
 
   function handleTraceClick(id: string) {
     setTraceNotice(null);
@@ -555,7 +560,17 @@ export default function App() {
     learnStash.current = null;
     setTutorial(null);
     if (s) {
-      loadState({ model: s.model, formulas: s.formulas, trace: s.trace ?? null });
+      // Restore WITHOUT resetting history (unlike loadState): undo stays
+      // coherent — restored state → tutorial mutations → … → pre-tutorial edits.
+      commitModel(s.model);
+      setFormulas(s.formulas);
+      setTrace(s.trace ?? null);
+      setRecording(false);
+      setSelection(null);
+      setActiveFormulaId(null);
+      setSelectedNodeId(null);
+      setStepIndex(null);
+      setShowEvidence(false);
       if (s.activeFormulaId) {
         setActiveFormulaId(s.activeFormulaId);
         setSelection({ kind: 'formula', id: s.activeFormulaId });
@@ -597,12 +612,15 @@ export default function App() {
   }, [learnView, tutorial]);
 
   // Highlight ring on the current step's data-learn anchor (anchors land in Task 6).
+  // rightTab is a dep because the anchors live inside the Inspector, which is
+  // unmounted while the Learn tab shows — switching panes must (re)apply the ring.
   useEffect(() => {
     document.querySelectorAll('.learn-ring').forEach((el) => el.classList.remove('learn-ring'));
-    const def = tutorial ? TUTORIALS.find((t) => t.id === tutorial.id) : null;
-    const hl = def?.steps[tutorial!.step]?.highlight;
+    if (tutorial === null) return;
+    const def = TUTORIALS.find((t) => t.id === tutorial.id);
+    const hl = def?.steps[tutorial.step]?.highlight;
     if (hl) document.querySelector(`[data-learn="${hl}"]`)?.classList.add('learn-ring');
-  }, [tutorial]);
+  }, [tutorial, rightTab]);
 
   const tutorialDef = tutorial ? TUTORIALS.find((t) => t.id === tutorial.id) ?? null : null;
 

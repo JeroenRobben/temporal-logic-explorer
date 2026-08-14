@@ -29,10 +29,12 @@ function md(text: string): ReactNode {
   });
 }
 
-const GROUP_ORDER: (Logic | 'shared')[] = ['shared', 'ctl', 'ltl', 'ctlstar'];
+const GROUP_ORDER: (Logic | 'shared' | 'pattern')[] = ['shared', 'ctl', 'ltl', 'ctlstar', 'pattern'];
 
-function groupLabel(g: Logic | 'shared'): string {
-  return g === 'shared' ? 'Shared' : LOGIC_LABEL[g];
+function groupLabel(g: Logic | 'shared' | 'pattern'): string {
+  if (g === 'shared') return 'Shared';
+  if (g === 'pattern') return 'Patterns (Dwyer)';
+  return LOGIC_LABEL[g];
 }
 
 export default function LearnPanel(props: Props) {

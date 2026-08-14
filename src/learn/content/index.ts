@@ -3,8 +3,9 @@ import { BOOL_REFS, TUT_BOOLEANS } from './booleans';
 import { CTL_REFS, CTL_TUTS } from './ctl';
 import { LTL_REFS, LTL_TUTS } from './ltl';
 import { STAR_REFS, STAR_TUTS } from './ctlstar';
+import { PATTERN_REFS } from './patterns';
 
-export const REFERENCES: ReferenceDoc[] = [...BOOL_REFS, ...CTL_REFS, ...LTL_REFS, ...STAR_REFS];
+export const REFERENCES: ReferenceDoc[] = [...BOOL_REFS, ...CTL_REFS, ...LTL_REFS, ...STAR_REFS, ...PATTERN_REFS];
 export const TUTORIALS: Tutorial[] = [TUT_BOOLEANS, ...CTL_TUTS, ...LTL_TUTS, ...STAR_TUTS];
 
 export function referenceById(id: string): ReferenceDoc | undefined {

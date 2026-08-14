@@ -43,7 +43,7 @@ describe('LearnPanel patterns group', () => {
     expect(screen.getByText(/reach for it when/i)).toBeTruthy();           // intent / when-to-use
     expect(screen.getByText(/AG \(P → AF S\)/)).toBeTruthy();              // CTL (globally) form
     expect(screen.getByText(/A \(G \(P → F S\)\)/)).toBeTruthy();          // CTL* form
-    expect(screen.getByText(/G \(P -> F S\)/)).toBeTruthy();               // Globally LTL template (formal)
+    expect(screen.getByText(/Globally scope: G \(P → F S\)/)).toBeTruthy(); // Globally LTL template (formal, glyphed)
   });
 });
 

@@ -11,9 +11,12 @@ describe('reference docs', () => {
     it(`${r.id} is complete and well-formed`, () => {
       expect(r.informal.length).toBeGreaterThan(40);
       expect(r.formal.length).toBeGreaterThan(10);
-      expect(r.bookRef).toMatch(/^MCS/);
+      // 'pattern' docs cite Dwyer et al. first, then their MCS kinship sections.
+      expect(r.bookRef).toMatch(r.logic === 'pattern' ? /^Dwyer et al\.; MCS/ : /^MCS/);
       for (const p of r.patterns) {
-        const logic = r.logic === 'shared' ? 'ctl' : r.logic;
+        // 'pattern' docs' worked examples are LTL instantiations of the Dwyer
+        // templates (their scoped forms only exist in LTL) — parse them as LTL.
+        const logic = r.logic === 'shared' ? 'ctl' : r.logic === 'pattern' ? 'ltl' : r.logic;
         expect(parseForLogic(logic, p.formula), `${r.id} pattern ${p.formula}`).not.toBeNull();
       }
       if (r.tutorialId) expect(TUTORIALS.some((t) => t.id === r.tutorialId)).toBe(true);

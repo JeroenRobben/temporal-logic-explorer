@@ -10,6 +10,7 @@ import { Logic, LOGIC_LABEL } from './types';
 import { tokenize } from './highlight';
 import { glossify } from './gloss';
 import { REF_BY_PALETTE } from '../learn/content';
+import PatternPicker from './PatternPicker';
 
 type ParsedState = { ast: CTLNode | LTLNode | StarNode } | { error: ParseError } | null;
 
@@ -276,6 +277,31 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
           );
         })}
       </div>
+      {!editing && (
+        <PatternPicker model={model} logic={logic}
+          onInsert={(text, l) => {
+            if (l !== logic) onSwitchLogic(l);
+            // Same post-update mechanism as insertAtCaret: stash the target
+            // selection, let the [draft] effect focus + select once React
+            // commits. First hole if any, else caret at the end.
+            const hole = text.indexOf(HOLE);
+            if (text === draft) {
+              // setDraft would bail (same value) and the [draft] effect never
+              // runs — select immediately instead of leaving a stale pending
+              // selection to yank the caret on the next unrelated edit.
+              const ta = taRef.current;
+              if (ta) {
+                ta.focus();
+                if (hole >= 0) ta.setSelectionRange(hole, hole + 1);
+              }
+              return;
+            }
+            pendingSelect.current = hole >= 0
+              ? { start: hole, end: hole + 1 }
+              : { start: text.length, end: text.length };
+            setDraft(text);
+          }} />
+      )}
     </div>
   );
 }

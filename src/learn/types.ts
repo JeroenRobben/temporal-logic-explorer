@@ -2,8 +2,8 @@ import { KripkeStructure } from '../core/kripke';
 import { Logic, PendingLasso } from '../ui/types';
 
 export interface ReferenceDoc {
-  id: string;                 // 'ltl-U', 'ctl-EG', 'bool-and', 'star-A', …
-  logic: Logic | 'shared';
+  id: string;                 // 'ltl-U', 'ctl-EG', 'bool-and', 'star-A', 'pat-response', …
+  logic: Logic | 'shared' | 'pattern';
   symbol: string;             // 'E[φ U ψ]'
   name: string;               // 'Exists-Until'
   informal: string;

@@ -30,6 +30,23 @@ describe('LearnPanel reference view', () => {
   });
 });
 
+describe('LearnPanel patterns group', () => {
+  it('renders Patterns (Dwyer) last and pat-response shows intent + both logics', () => {
+    const onOpenRef = vi.fn();
+    const { container, unmount } = render(<LearnPanel {...base} onOpenRef={onOpenRef} />);
+    const headers = container.querySelectorAll('.learn-ref-section .section-title');
+    expect(headers[headers.length - 1].textContent).toBe('Patterns (Dwyer)');
+    fireEvent.click(screen.getByText(/Response — S responds to P/));
+    expect(onOpenRef).toHaveBeenCalledWith('pat-response');
+    unmount();
+    render(<LearnPanel {...base} refId="pat-response" />);
+    expect(screen.getByText(/reach for it when/i)).toBeTruthy();           // intent / when-to-use
+    expect(screen.getByText(/AG \(P → AF S\)/)).toBeTruthy();              // CTL (globally) form
+    expect(screen.getByText(/A \(G \(P → F S\)\)/)).toBeTruthy();          // CTL* form
+    expect(screen.getByText(/Globally scope: G \(P → F S\)/)).toBeTruthy(); // Globally LTL template (formal, glyphed)
+  });
+});
+
 const STUB_TUT: Tutorial = {
   id: 'tut-stub', title: 'Stub tutorial', logic: 'ctl',
   intro: 'intro',

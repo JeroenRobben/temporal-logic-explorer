@@ -18,9 +18,9 @@
 
 **Files:** Modify `src/styles.css`; Test `src/ui/tokens.test.ts` (new).
 
-- [ ] **Step 1: Failing drift test:** read `src/styles.css` as text (vitest can `import ... ?raw` or `readFileSync`); assert (a) it contains a `:root {` block defining every token named in the spec (surfaces, semantics, scale — enumerate them in the test as a fixture array), (b) outside the two token blocks there are NO raw hex colors (`/#[0-9a-fA-F]{3,8}\b/`) and no `rgb(`/`rgba(` except inside `var(--shadow-…)`/token definitions — implement by slicing the file into token-blocks vs rest and regexing the rest.
-- [ ] **Step 2: FAIL** → **Step 3:** restructure: add the `:root` token block with light values chosen FROM the current palette (map the 99 existing hex usages onto the nearest semantic token; keep current look — this task is a refactor, not a redesign); add an EMPTY-for-now `:root[data-theme='dark']` block with a comment (Task 2 fills it); sweep every rule to `var(--…)` for colors, and snap padding/font-size/radius to the `--space-*`/`--fs-*`/`--radius-*` scale (nearest step; eyeball-preserving).
-- [ ] **Step 4: PASS + full suite** (few UI tests assert colors; if any do, re-anchor to tokens/classes, report). **Step 5: Commit** `refactor(ui): semantic design tokens, light values`.
+- [x] **Step 1: Failing drift test:** read `src/styles.css` as text (vitest can `import ... ?raw` or `readFileSync`); assert (a) it contains a `:root {` block defining every token named in the spec (surfaces, semantics, scale — enumerate them in the test as a fixture array), (b) outside the two token blocks there are NO raw hex colors (`/#[0-9a-fA-F]{3,8}\b/`) and no `rgb(`/`rgba(` except inside `var(--shadow-…)`/token definitions — implement by slicing the file into token-blocks vs rest and regexing the rest.
+- [x] **Step 2: FAIL** → **Step 3:** restructure: add the `:root` token block with light values chosen FROM the current palette (map the 99 existing hex usages onto the nearest semantic token; keep current look — this task is a refactor, not a redesign); add an EMPTY-for-now `:root[data-theme='dark']` block with a comment (Task 2 fills it); sweep every rule to `var(--…)` for colors, and snap padding/font-size/radius to the `--space-*`/`--fs-*`/`--radius-*` scale (nearest step; eyeball-preserving).
+- [x] **Step 4: PASS + full suite** (few UI tests assert colors; if any do, re-anchor to tokens/classes, report). **Step 5: Commit** `refactor(ui): semantic design tokens, light values`.
 
 ### Task 2: theme.ts + Header toggle + dark values
 

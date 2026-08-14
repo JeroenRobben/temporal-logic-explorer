@@ -1,7 +1,71 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
 import { validateSavedState } from './storage';
+
+type MMListener = (e: { matches: boolean }) => void;
+
+function installMatchMedia(dark: boolean) {
+  const listeners: MMListener[] = [];
+  const mql = {
+    matches: dark,
+    media: '(prefers-color-scheme: dark)',
+    addEventListener: (_t: string, l: MMListener) => { listeners.push(l); },
+    removeEventListener: (_t: string, l: MMListener) => {
+      const i = listeners.indexOf(l);
+      if (i !== -1) listeners.splice(i, 1);
+    },
+  };
+  window.matchMedia = vi.fn(() => mql) as unknown as typeof window.matchMedia;
+}
+
+describe('Header theme toggle', () => {
+  const originalMatchMedia = window.matchMedia;
+
+  beforeEach(() => {
+    localStorage.clear();
+    delete document.documentElement.dataset.theme;
+    installMatchMedia(false);
+  });
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('shows ◑ for the default auto pref and applies the resolved theme at mount', () => {
+    render(<App />);
+    const btn = screen.getByTitle('Theme: auto');
+    expect(btn.textContent).toBe('◑');
+    expect(document.documentElement.dataset.theme).toBe('light');
+  });
+
+  it('click cycles auto → light → dark → auto, applying + persisting each step', () => {
+    render(<App />);
+    const btn = screen.getByTitle('Theme: auto');
+
+    fireEvent.click(btn);
+    expect(screen.getByTitle('Theme: light').textContent).toBe('☀');
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(localStorage.getItem('tle-theme')).toBe('light');
+
+    fireEvent.click(screen.getByTitle('Theme: light'));
+    expect(screen.getByTitle('Theme: dark').textContent).toBe('☾');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('tle-theme')).toBe('dark');
+
+    fireEvent.click(screen.getByTitle('Theme: dark'));
+    expect(screen.getByTitle('Theme: auto').textContent).toBe('◑');
+    expect(document.documentElement.dataset.theme).toBe('light'); // system is light in stub
+    expect(localStorage.getItem('tle-theme')).toBe('auto');
+  });
+
+  it('honors a stored dark pref at mount', () => {
+    localStorage.setItem('tle-theme', 'dark');
+    render(<App />);
+    expect(screen.getByTitle('Theme: dark').textContent).toBe('☾');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+  });
+});
 
 describe('Header export/import round-trip', () => {
   beforeEach(() => localStorage.clear());

@@ -5,6 +5,7 @@ import { pretty as prettyStar } from '../core/ctlstar-parser';
 import { KripkeStructure } from '../core/kripke';
 import { Analysis, Logic, LOGIC_LABEL } from './types';
 import Composer from './Composer';
+import { WorkbenchMode } from './Workbench';
 
 interface FormulaPanelProps {
   analyses: Analysis[];
@@ -17,10 +18,14 @@ interface FormulaPanelProps {
   onUpdate: (id: string, text: string) => void;
   onSwitchLogic: (l: Logic) => void;
   onOpenLearn: (id: string) => void;
+  /** Drawer state pass-through (optional: the composer self-manages without it). */
+  workbench?: WorkbenchMode | null;
+  onOpenWorkbench?: (m: WorkbenchMode | null) => void;
 }
 
 export default function FormulaPanel({
   analyses, selectedFormulaId, onSelect, onAdd, onRemove, entryLogic, model, onUpdate, onSwitchLogic, onOpenLearn,
+  workbench, onOpenWorkbench,
 }: FormulaPanelProps) {
   const [editing, setEditing] = useState<{ id: string; text: string; logic: Logic } | null>(null);
 
@@ -37,6 +42,8 @@ export default function FormulaPanel({
         onCancelEdit={() => setEditing(null)}
         onSwitchLogic={onSwitchLogic}
         onOpenLearn={onOpenLearn}
+        workbench={workbench}
+        onOpenWorkbench={onOpenWorkbench}
       />
       <div style={{ marginTop: 8 }}>
         {analyses.map((a) => {

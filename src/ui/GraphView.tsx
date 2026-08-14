@@ -92,7 +92,7 @@ export default function GraphView({ graph, onHoverNode }: GraphViewProps) {
       <defs>
         <marker id="garrow" viewBox="0 0 10 10" refX="9" refY="5"
           markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#555" />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-dim)" />
         </marker>
       </defs>
       <g transform={`translate(${view.tx},${view.ty}) scale(${view.scale})`}>
@@ -103,7 +103,7 @@ export default function GraphView({ graph, onHoverNode }: GraphViewProps) {
           const m = midpoint(pos(e.from), e.from === e.to ? pos(e.from) : pos(e.to), curved);
           return (
             <g key={i}>
-              <path d={edgePath(a, b, curved)} fill="none" stroke="#555"
+              <path d={edgePath(a, b, curved)} fill="none" stroke="var(--text-dim)"
                 strokeWidth={1.3} markerEnd="url(#garrow)" />
               {e.label && (
                 <text className="edge-label" x={m.x} y={m.y} textAnchor="middle">{e.label}</text>
@@ -119,11 +119,11 @@ export default function GraphView({ graph, onHoverNode }: GraphViewProps) {
               style={{ cursor: 'default' }}>
               {n.initial && (
                 <path d={`M ${p.x - GR - 24} ${p.y - GR - 10} L ${p.x - GR + 3} ${p.y - GR + 13}`}
-                  stroke="#333" strokeWidth={2} markerEnd="url(#garrow)" fill="none" />
+                  stroke="var(--text)" strokeWidth={2} markerEnd="url(#garrow)" fill="none" />
               )}
-              <circle cx={p.x} cy={p.y} r={GR} fill="#fff" stroke="#333" strokeWidth={1.5} />
+              <circle cx={p.x} cy={p.y} r={GR} fill="var(--panel)" stroke="var(--text)" strokeWidth={1.5} />
               {n.accepting && (
-                <circle cx={p.x} cy={p.y} r={GR - 4} fill="none" stroke="#333" strokeWidth={1.2} />
+                <circle cx={p.x} cy={p.y} r={GR - 4} fill="none" stroke="var(--text)" strokeWidth={1.2} />
               )}
               <text className="graph-label" x={p.x} y={p.y + 4} textAnchor="middle"
                 style={{ userSelect: 'none' }}>{n.label}</text>

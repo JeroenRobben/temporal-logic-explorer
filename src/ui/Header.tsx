@@ -1,7 +1,10 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { EXAMPLES } from './examples';
 import { SavedState, validateSavedState, normalizeSavedState } from './storage';
 import { Logic } from './types';
+import { ThemePref, applyTheme, cyclePref, loadPref } from './theme';
+
+const THEME_ICONS: Record<ThemePref, string> = { auto: '◑', light: '☀', dark: '☾' };
 
 interface HeaderProps {
   onLoadExample: (index: number) => void;
@@ -21,6 +24,13 @@ export default function Header({
   entryLogic, onEntryLogic,
 }: HeaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [themePref, setThemePref] = useState<ThemePref>(loadPref);
+
+  function onThemeClick() {
+    const next = cyclePref(themePref);
+    setThemePref(next);
+    applyTheme(next);
+  }
 
   function doExport() {
     const blob = new Blob([JSON.stringify(exportState(), null, 2)], { type: 'application/json' });
@@ -66,6 +76,7 @@ export default function Header({
         <option value="">Load example…</option>
         {EXAMPLES.map((ex, i) => <option key={ex.name} value={i}>{ex.name}</option>)}
       </select>
+      <button onClick={onThemeClick} title={`Theme: ${themePref}`}>{THEME_ICONS[themePref]}</button>
       <button onClick={doExport}>Export</button>
       <button onClick={() => fileRef.current?.click()}>Import</button>
       <input

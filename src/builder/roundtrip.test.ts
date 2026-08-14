@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { HNode, OpId, fromAst, toText } from './htree';
+import { legalOps } from './catalog';
 import { parseForLogic } from '../learn/engine';
 import { REFERENCES } from '../learn/content';
 import { PATTERNS, instantiate } from '../patterns/patterns';
@@ -60,19 +61,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-const BOOLEANS: OpId[] = ['not', 'and', 'or', 'implies', 'iff'];
 const UNARY: OpId[] = ['not', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'A', 'E'];
-
-/** Legal ops per logic. CTL* is level-sensitive: parseCTLStar only accepts
- *  state formulas at the root — bare temporals must sit under a quantifier
- *  (booleans preserve the current level; A/E switch to path level). */
-function legalOps(logic: Logic, pathLevel: boolean): OpId[] {
-  if (logic === 'ctl') return [...BOOLEANS, 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
-  if (logic === 'ltl') return [...BOOLEANS, 'X', 'F', 'G', 'U'];
-  return pathLevel
-    ? [...BOOLEANS, 'X', 'F', 'G', 'U', 'A', 'E']
-    : [...BOOLEANS, 'A', 'E'];
-}
 
 const PROPS = ['p', 'q', 'r', 's'];
 const DEPTH_CAP = 5;

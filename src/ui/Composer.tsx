@@ -87,22 +87,32 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
   const hlRef = useRef<HTMLDivElement>(null);
   const preEditDraft = useRef<string>('');
   const pendingSelect = useRef<{ start: number; end: number } | null>(null);
-  const prevEditingId = useRef<string | null>(null);
 
   // Entering edit mode loads the text; leaving restores the old draft. Only
   // stash the draft on a fresh edit session (null -> editing); switching
   // directly between two edits must not clobber the original stash with the
   // first edit's unsaved in-progress text.
+  //
+  // Derived DURING render (not in an effect): the keyed BuilderView below
+  // remounts on the very render where `editing` changes, and its seed reads
+  // the draft synchronously — an effect would run after that remount and the
+  // builder would seed from the stale draft (then save the wrong formula).
+  // Setting state during render restarts this component's render before
+  // children are committed, so seed and draft always agree.
   const editingId = editing?.id ?? null;
-  useEffect(() => {
+  const [seededEditingId, setSeededEditingId] = useState<string | null>(null);
+  if (editingId !== seededEditingId) {
     if (editing) {
-      if (prevEditingId.current === null) preEditDraft.current = draft;
+      if (seededEditingId === null) preEditDraft.current = draft;
       setDraft(editing.text);
-      taRef.current?.focus();
     } else {
       setDraft(preEditDraft.current);
     }
-    prevEditingId.current = editingId;
+    setSeededEditingId(editingId);
+  }
+
+  useEffect(() => {
+    if (editing) taRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 
@@ -271,7 +281,9 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
       </div>
       <div className="composer-row">
         {allPropositions(model).map((p) => (
-          <button key={p} className="prop-chip" onClick={() => insertAtCaret(p)}>{p}</button>
+          // While the builder is open it owns the draft — text-side writers
+          // are disabled so a builder edit can't silently revert their text.
+          <button key={p} className="prop-chip" disabled={builderOpen} onClick={() => insertAtCaret(p)}>{p}</button>
         ))}
         {allPropositions(model).length === 0 && <span className="muted">no propositions yet</span>}
       </div>
@@ -280,7 +292,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
           const refId = REF_BY_PALETTE[entry.label];
           return (
             <Fragment key={entry.label}>
-              <button className="op-btn" title={entry.gloss}
+              <button className="op-btn" title={entry.gloss} disabled={builderOpen}
                 onClick={() => insertAtCaret(entry.insert, entry.template)}>
                 {entry.label}
               </button>
@@ -293,7 +305,7 @@ export default function Composer({ logic, model, editing, onSave, onCancelEdit, 
           );
         })}
       </div>
-      {!editing && (
+      {!editing && !builderOpen && (
         <PatternPicker model={model} logic={logic}
           onInsert={(text, l) => {
             if (l !== logic) onSwitchLogic(l);

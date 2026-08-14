@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HNode, OpId, fromAst, toText } from './htree';
+import { ARITY, HNode, OpId, fromAst, toText } from './htree';
 import { legalOps } from './catalog';
 import { parseForLogic } from '../learn/engine';
 import { REFERENCES } from '../learn/content';
@@ -61,8 +61,6 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-const UNARY: OpId[] = ['not', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'A', 'E'];
-
 const PROPS = ['p', 'q', 'r', 's'];
 const DEPTH_CAP = 5;
 
@@ -75,7 +73,7 @@ function genTree(rand: () => number, logic: Logic, depth: number, pathLevel: boo
   const ops = legalOps(logic, pathLevel);
   const o = ops[Math.floor(rand() * ops.length)];
   const childLevel = o === 'A' || o === 'E' ? true : pathLevel;
-  const arity = UNARY.includes(o) ? 1 : 2;
+  const arity = ARITY[o];
   const children: HNode[] = [];
   for (let i = 0; i < arity; i++) children.push(genTree(rand, logic, depth + 1, childLevel));
   return op(o, ...children);

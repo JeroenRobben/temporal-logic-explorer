@@ -12,7 +12,6 @@ interface BuilderViewProps {
   model: KripkeStructure;
   initialText: string;
   onChange: (text: string) => void;
-  onNotice?: (msg: string) => void;
 }
 
 const HOLE = '▢';
@@ -52,21 +51,25 @@ function opWithHoles(op: OpId): HNode {
  * wanted, so seeding only in the initializer is deliberate); every edit
  * pretty-prints into the draft via `onChange`.
  */
-export default function BuilderView({ logic, model, initialText, onChange, onNotice }: BuilderViewProps) {
-  const [seed] = useState<{ tree: HNode; failed: boolean }>(() => {
+export default function BuilderView({ logic, model, initialText, onChange }: BuilderViewProps) {
+  const [seed] = useState<{ tree: HNode; failed: boolean; printed: string }>(() => {
     const text = initialText.trim();
-    if (text === '') return { tree: { kind: 'hole' }, failed: false };
+    if (text === '') return { tree: { kind: 'hole' }, failed: false, printed: initialText };
     const imported = fromAst(logic, text);
     return imported !== null
-      ? { tree: imported, failed: false }
-      : { tree: { kind: 'hole' }, failed: true };
+      ? { tree: imported, failed: false, printed: toText(imported, logic) }
+      : { tree: { kind: 'hole' }, failed: true, printed: HOLE };
   });
   const [tree, setTree] = useState<HNode>(seed.tree);
   const [popover, setPopover] = useState<Popover | null>(null);
   const popRef = useRef<HTMLElement | null>(null);
 
+  // Keep draft and tree coherent from the start: a failed import collapses
+  // the draft to the single hole the builder actually holds, and a successful
+  // import normalizes the draft to the tree's printed form (e.g. `AG(p)` →
+  // `AG p`) so later edits never diff against text the tree can't reproduce.
   useEffect(() => {
-    if (seed.failed) onNotice?.(IMPORT_NOTICE);
+    if (seed.printed !== initialText) onChange(seed.printed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -161,18 +161,78 @@ describe('BuilderView in the composer', () => {
     expect(ta.value).toBe('AG ▢');
   });
 
-  it('editing mode composes: the builder seeds from the row text via the row logic', () => {
-    render(
-      <Composer
-        logic="ctl" model={MODEL}
-        editing={{ id: 'f1', text: 'G go', logic: 'ltl' }}
-        onSave={() => {}} onCancelEdit={() => {}}
-        onSwitchLogic={() => {}} onOpenLearn={() => {}}
-      />,
-    );
-    const view = toggleBuilder();
+  it('editing mode composes: entering edit with the builder open reseeds from the row text via the row logic', () => {
+    const saved: string[] = [];
+    const props = {
+      logic: 'ctl' as Logic, model: MODEL,
+      onSave: (t: string) => saved.push(t), onCancelEdit: () => {},
+      onSwitchLogic: () => {}, onOpenLearn: () => {},
+    };
+    const { rerender } = render(<Composer {...props} editing={null} />);
+    fireEvent.change(textarea(), { target: { value: 'AG go' } });
+    let view = toggleBuilder();
+    expect(within(view).getByText('AG')).toBeTruthy();
+
+    // THE transition under test: ✎ on a row while the builder is open. The
+    // builder must remount seeded from the row's text (via the row's logic),
+    // not from the stale pre-edit draft.
+    rerender(<Composer {...props} editing={{ id: 'f1', text: 'G stop', logic: 'ltl' }} />);
+    view = document.querySelector('.builder-view') as HTMLElement;
     expect(within(view).getByText('G')).toBeTruthy(); // LTL temporal node, seeded via effLogic
-    expect(within(view).getByText('go')).toBeTruthy();
+    expect(within(view).getByText('stop')).toBeTruthy();
+    expect(within(view).queryByText('AG')).toBeNull();
+    expect(textarea().value).toBe('G stop');
     expect(textarea().readOnly).toBe(true);
+
+    // One builder edit + Enter saves the ROW's formula, not the old draft.
+    fireEvent.click(within(view).getByText('stop'));
+    fireEvent.click(within(popover()!).getByText('replace…'));
+    fireEvent.click(within(popover()!).getByText('go'));
+    expect(textarea().value).toBe('G go');
+    fireEvent.keyDown(textarea(), { key: 'Enter' });
+    expect(saved).toEqual(['G go']);
+
+    // Leaving edit mode restores the pre-edit draft AND reseeds the builder
+    // from it — the same remount race in the other direction.
+    rerender(<Composer {...props} editing={null} />);
+    view = document.querySelector('.builder-view') as HTMLElement;
+    expect(textarea().value).toBe('AG go');
+    expect(within(view).getByText('AG')).toBeTruthy();
+    expect(within(view).queryByText('stop')).toBeNull();
+  });
+
+  it('locks out text-side draft writers while open: palette + prop chips disabled, PatternPicker hidden', () => {
+    render(<Harness />);
+    const chip = () => [...document.querySelectorAll('.prop-chip')]
+      .find((c) => c.textContent === 'go' && !c.closest('.builder-view')) as HTMLButtonElement;
+    const opBtn = () => [...document.querySelectorAll('.op-btn')]
+      .find((b) => b.textContent === 'AG' && !b.closest('.builder-view')) as HTMLButtonElement;
+    expect(chip().disabled).toBe(false);
+    expect(opBtn().disabled).toBe(false);
+    expect(document.querySelector('.pattern-toggle')).toBeTruthy();
+    toggleBuilder();
+    expect(chip().disabled).toBe(true);
+    expect(opBtn().disabled).toBe(true);
+    expect(document.querySelector('.pattern-toggle')).toBeNull();
+    fireEvent.click(screen.getByText('⌗ Builder')); // off again
+    expect(chip().disabled).toBe(false);
+    expect(opBtn().disabled).toBe(false);
+    expect(document.querySelector('.pattern-toggle')).toBeTruthy();
+  });
+
+  it('failed import collapses the draft to the single hole the builder holds', () => {
+    render(<Harness />);
+    fireEvent.change(textarea(), { target: { value: 'AG (' } });
+    toggleBuilder();
+    expect(document.querySelector('.builder-notice')).toBeTruthy(); // notice still shown
+    expect(textarea().value).toBe('▢'); // draft == tree
+  });
+
+  it('successful import normalizes the draft to the printed form', () => {
+    render(<Harness />);
+    fireEvent.change(textarea(), { target: { value: 'AG(go)' } });
+    const view = toggleBuilder();
+    expect(within(view).getByText('AG')).toBeTruthy();
+    expect(textarea().value).toBe('AG go');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HNode, OpId, Path, holes, replaceAt, toText } from './htree';
+import { ARITY, HNode, OpId, Path, deleteAt, holes, replaceAt, toText, wrapAt } from './htree';
 import { optionsFor } from './catalog';
 import { parseCTLStar, classify } from '../core/ctlstar-parser';
 
@@ -117,10 +117,8 @@ function buildRandom(rand: () => number): HNode {
     let filler: HNode;
     if (pick < opts.ops.length) {
       const o = opts.ops[pick];
-      const children: HNode[] = [{ kind: 'hole' }];
-      if (o === 'and' || o === 'or' || o === 'implies' || o === 'iff' || o === 'U') {
-        children.push({ kind: 'hole' });
-      }
+      const children: HNode[] = [];
+      for (let k = 0; k < ARITY[o]; k++) children.push({ kind: 'hole' });
       filler = op(o, ...children);
     } else if (opts.props && pick === opts.ops.length) {
       filler = prop(PROPS[Math.floor(rand() * PROPS.length)]);
@@ -142,6 +140,80 @@ describe('random-build invariant: catalog-built CTL* trees are state-rooted', ()
         root = parseCTLStar(text);
       } catch (e) {
         throw new Error(`parseCTLStar rejected catalog-built formula: ${text} (${String(e)})`);
+      }
+      expect(classify(root).get(root.id), `not state-rooted: ${text}`).toBe('state');
+    }
+  });
+});
+
+// --- action-sequence fuzz --------------------------------------------------
+
+/** Paths of ALL nodes (root included), pre-order. */
+function allPaths(tree: HNode): Path[] {
+  const out: Path[] = [];
+  (function walk(n: HNode, path: Path): void {
+    out.push(path);
+    if (n.kind === 'op') n.children.forEach((c, i) => walk(c, [...path, i]));
+  })(tree, []);
+  return out;
+}
+
+/** Random legal filler for the position `path`: an offered op (with hole
+ *  children per ARITY), a prop, or a const — mirrors the builder palette. */
+function randomFiller(rand: () => number, tree: HNode, path: Path): HNode {
+  const opts = optionsFor('ctlstar', tree, path);
+  const n = opts.ops.length + (opts.props ? 1 : 0) + (opts.consts ? 1 : 0);
+  const pick = Math.floor(rand() * n);
+  if (pick < opts.ops.length) {
+    const o = opts.ops[pick];
+    const children: HNode[] = [];
+    for (let k = 0; k < ARITY[o]; k++) children.push({ kind: 'hole' });
+    return op(o, ...children);
+  }
+  if (opts.props && pick === opts.ops.length) {
+    return prop(PROPS[Math.floor(rand() * PROPS.length)]);
+  }
+  return { kind: 'const', value: rand() < 0.5 };
+}
+
+describe('action-sequence fuzz: random builder sessions stay state-rooted', () => {
+  it('500 seeded CTL* sessions of fill/replace/wrap/delete parse and classify state at the root', () => {
+    const rand = mulberry32(0xF00DFACE);
+    const ACTIONS = 30;
+    for (let s = 0; s < 500; s++) {
+      let tree: HNode = { kind: 'hole' };
+      for (let a = 0; a < ACTIONS; a++) {
+        const hs = holes(tree);
+        const paths = allPaths(tree);
+        const action = Math.floor(rand() * 4);
+        if (action === 0 && hs.length > 0) {
+          // fill: a random hole, from its palette
+          const path = hs[Math.floor(rand() * hs.length)];
+          tree = replaceAt(tree, path, randomFiller(rand, tree, path));
+        } else if (action === 1) {
+          // replace: any node (root included), from its position's palette
+          const path = paths[Math.floor(rand() * paths.length)];
+          tree = replaceAt(tree, path, randomFiller(rand, tree, path));
+        } else if (action === 2) {
+          // wrap: any node, in a unary op offered at that node's position
+          const path = paths[Math.floor(rand() * paths.length)];
+          const wrapOps = optionsFor('ctlstar', tree, path).ops.filter((o) => ARITY[o] === 1);
+          tree = wrapAt(tree, path, wrapOps[Math.floor(rand() * wrapOps.length)]);
+        } else {
+          // delete: any node (root included) back to a hole
+          tree = deleteAt(tree, paths[Math.floor(rand() * paths.length)]);
+        }
+      }
+      // Finish the session: fill remaining holes with props (always legal).
+      for (let hs = holes(tree); hs.length > 0; hs = holes(tree)) {
+        tree = replaceAt(tree, hs[0], prop(PROPS[Math.floor(rand() * PROPS.length)]));
+      }
+      const text = toText(tree, 'ctlstar');
+      let root;
+      try {
+        root = parseCTLStar(text);
+      } catch (e) {
+        throw new Error(`parseCTLStar rejected session-built formula: ${text} (${String(e)})`);
       }
       expect(classify(root).get(root.id), `not state-rooted: ${text}`).toBe('state');
     }

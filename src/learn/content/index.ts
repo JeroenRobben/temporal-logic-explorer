@@ -13,7 +13,8 @@ export function referenceById(id: string): ReferenceDoc | undefined {
 /** Composer palette label → reference id (extended by Tasks 8–10 as content lands). */
 export const REF_BY_PALETTE: Record<string, string> = {
   '∧': 'bool-and', '∨': 'bool-or', '¬': 'bool-not', '→': 'bool-implies', '↔': 'bool-iff',
-  'EF': 'ctl-EF',
+  'EF': 'ctl-EF', 'AG': 'ctl-AG', 'AF': 'ctl-AF', 'EG': 'ctl-EG', 'AX': 'ctl-AX', 'EX': 'ctl-EX',
+  'A[▢U▢]': 'ctl-AU', 'E[▢U▢]': 'ctl-EU',
   'G': 'ltl-G', 'F': 'ltl-F', 'X': 'ltl-X', '▢U▢': 'ltl-U',
 };
 
@@ -21,7 +22,7 @@ export const REF_BY_PALETTE: Record<string, string> = {
 export function refIdForNode(logic: string, kind: string): string | null {
   const shared: Record<string, string> = { and: 'bool-and', or: 'bool-or', not: 'bool-not', implies: 'bool-implies', iff: 'bool-iff' };
   if (shared[kind]) return shared[kind];
-  if (logic === 'ctl' && kind === 'EF') return 'ctl-EF';
+  if (logic === 'ctl' && ['EF', 'AX', 'EX', 'AF', 'AG', 'EG', 'AU', 'EU'].includes(kind)) return `ctl-${kind}`;
   if (logic === 'ltl' && (kind === 'X' || kind === 'F' || kind === 'G' || kind === 'U')) return `ltl-${kind}`;
   return null;
 }

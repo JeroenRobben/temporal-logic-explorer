@@ -37,6 +37,12 @@ export const M_ESCAPE: KripkeStructure = {
   transitions: [{ from: 'a', to: 'a' }, { from: 'a', to: 'b' }, { from: 'b', to: 'b' }],
 };
 
+/** M_ESCAPE with a→a removed (solution model for the "cut the loop" tasks): EG p ✗, AF ¬p ✓. */
+export const M_ESCAPE_CUT: KripkeStructure = {
+  ...M_ESCAPE,
+  transitions: M_ESCAPE.transitions.filter((t) => !(t.from === 'a' && t.to === 'a')),
+};
+
 /** Deadlock teaching model: d0{p} → d1{} with NO outgoing edges (deadlock). */
 export const M_DEAD: KripkeStructure = {
   states: [

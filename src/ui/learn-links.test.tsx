@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import App from './App';
 
 describe('learn ? links', () => {
@@ -41,10 +41,15 @@ describe('learn ? links', () => {
 
   it('palette buttons without a mapped reference render no ?', () => {
     render(<App />);
-    // the CTL Until snippets are unmapped until Task 9 lands their references
+    // Task 9 landed the CTL Until references — the snippets are now mapped
     expect(screen.getByText('A[▢U▢]')).toBeTruthy(); // the button itself exists
-    expect(document.querySelector('[data-learn="palette-A[▢U▢]"]')).toBeNull();
-    expect(document.querySelector('[data-learn="palette-E[▢U▢]"]')).toBeNull();
+    expect(document.querySelector('[data-learn="palette-A[▢U▢]"]')).toBeTruthy();
+    expect(document.querySelector('[data-learn="palette-E[▢U▢]"]')).toBeTruthy();
+    // the CTL* quantifier buttons stay unmapped until Task 10 lands star-A/star-E
+    fireEvent.click(within(document.querySelector('.header')!).getByText('CTL*'));
+    expect(within(document.querySelector('.composer-row:last-child')!).getByText('A')).toBeTruthy();
+    expect(document.querySelector('[data-learn="palette-A"]')).toBeNull();
+    expect(document.querySelector('[data-learn="palette-E"]')).toBeNull();
   });
 
   it('inspector anchors exist for tutorial highlights (tree + evidence)', () => {

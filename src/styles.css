@@ -100,6 +100,30 @@ body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #2
 .tree-toolbar input[type="range"] { width: 120px; }
 
 .composer { margin-bottom: 8px; }
+.composer-top { display: flex; gap: 6px; align-items: flex-start; }
+.composer-top .composer-input-wrap { flex: 1; }
+.builder-toggle { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; background: #fff;
+  cursor: pointer; font-size: 12px; color: #4a5568; white-space: nowrap; }
+.builder-toggle[aria-pressed="true"] { background: #ebf4ff; border-color: #2b6cb0; color: #2b6cb0; }
+.builder-view { border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px; margin: 4px 0;
+  font-family: ui-monospace, monospace; font-size: 13px; overflow-x: auto; }
+.builder-notice { background: #fffaf0; border: 1px solid #ed8936; border-radius: 4px;
+  padding: 2px 8px; margin-bottom: 4px; font-size: 12px; color: #975a16; }
+.hnode { display: inline-flex; align-items: center; gap: 3px; border: 1px solid #e2e8f0;
+  border-radius: 6px; padding: 2px 4px; margin: 1px; position: relative; background: #fff; }
+.hnode-wrap { position: relative; display: inline-flex; }
+.hnode-hole { background: #feebc8; color: #975a16; border: 1px dashed #ed8936; border-radius: 4px;
+  cursor: pointer; padding: 1px 6px; font: inherit; }
+.hnode-leaf { background: #fff; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer;
+  padding: 1px 6px; font: inherit; }
+.hnode-label { border: none; background: none; cursor: pointer; font: inherit; padding: 0 2px; }
+.hnode-glue { color: #a0aec0; }
+.builder-popover { position: absolute; top: 100%; left: 0; z-index: 20; background: #fff;
+  border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 6px; display: flex; flex-wrap: wrap; gap: 4px; min-width: 200px; }
+.builder-menu-btn { border: 1px solid #cbd5e0; border-radius: 4px; padding: 1px 7px; background: #fff;
+  cursor: pointer; font-size: 12px; }
+.builder-menu-wrap { display: inline-flex; gap: 3px; align-items: center; flex-wrap: wrap; }
 .composer-input-wrap { position: relative; font-family: ui-monospace, monospace; font-size: 13px; }
 .composer-highlight { position: absolute; inset: 0; padding: 6px; pointer-events: none;
   white-space: pre; overflow: hidden; border: 1px solid transparent; }

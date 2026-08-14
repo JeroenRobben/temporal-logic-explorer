@@ -26,9 +26,9 @@
 
 **Files:** Create `src/ui/theme.ts`; Modify `src/ui/Header.tsx`, `src/ui/App.tsx` (mount-time init), `src/styles.css` (dark block); Test `src/ui/theme.test.ts` + extend Header tests.
 
-- [ ] **Step 1: Failing tests:** `resolveTheme('auto', true) === 'dark'`, `('auto', false) === 'light'`, explicit prefs pass through; `applyTheme` sets `document.documentElement.dataset.theme` to the RESOLVED value and persists the PREF under `tle-theme`; `cycle('auto') === 'light'` → `'dark'` → `'auto'`; bad stored value → `'auto'`; auto attaches a matchMedia change listener that re-applies (stub `window.matchMedia` in the test — jsdom lacks it; provide addEventListener/removeEventListener capture) and `detachThemeListener`/re-apply on pref change removes it. Header: button shows ◑/☀/☾ per pref, click cycles + applies.
-- [ ] **Step 2: FAIL** → **Step 3:** implement `theme.ts` (`type ThemePref = 'auto'|'light'|'dark'`; `loadPref`, `applyTheme(pref)`, `cyclePref`), Header button (title `Theme: auto/light/dark`), App calls `applyTheme(loadPref())` in a mount effect. Fill the dark token block per the spec's dark-value guidance (true dark neutrals, adjusted-lightness semantics, no #000/#fff pairs).
-- [ ] **Step 4: PASS + full suite.** **Step 5: Commit** `feat(ui): dark mode with system-follow + manual toggle`.
+- [x] **Step 1: Failing tests:** `resolveTheme('auto', true) === 'dark'`, `('auto', false) === 'light'`, explicit prefs pass through; `applyTheme` sets `document.documentElement.dataset.theme` to the RESOLVED value and persists the PREF under `tle-theme`; `cycle('auto') === 'light'` → `'dark'` → `'auto'`; bad stored value → `'auto'`; auto attaches a matchMedia change listener that re-applies (stub `window.matchMedia` in the test — jsdom lacks it; provide addEventListener/removeEventListener capture) and `detachThemeListener`/re-apply on pref change removes it. Header: button shows ◑/☀/☾ per pref, click cycles + applies.
+- [x] **Step 2: FAIL** → **Step 3:** implement `theme.ts` (`type ThemePref = 'auto'|'light'|'dark'`; `loadPref`, `applyTheme(pref)`, `cyclePref`), Header button (title `Theme: auto/light/dark`), App calls `applyTheme(loadPref())` in a mount effect. Fill the dark token block per the spec's dark-value guidance (true dark neutrals, adjusted-lightness semantics, no #000/#fff pairs).
+- [x] **Step 4: PASS + full suite.** **Step 5: Commit** `feat(ui): dark mode with system-follow + manual toggle`.
 
 ### Task 3: SVG canvases to tokens
 

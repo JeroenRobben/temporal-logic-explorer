@@ -53,7 +53,39 @@
 }
 
 :root[data-theme='dark'] {
-  /* Dark values are filled in by Task 2 (theme.ts + Header toggle). */
+  /* surfaces & text — true dark neutrals, no pure black/white */
+  --bg: #131418;
+  --panel: #1b1e24;
+  --panel-raised: #21252d;
+  --border: #343a44;
+  --border-strong: #49515e;
+  --text: #e4e6ea;
+  --text-dim: #a3abb8;
+  --text-faint: #6d7684;
+  --backdrop: rgba(0, 0, 0, 0.55);
+  --hover: color-mix(in srgb, var(--text) 12%, transparent);
+  --on-accent: #10141a;
+
+  /* semantics — same hue family, lightness raised for contrast on dark */
+  --accent: #7cb5f0;
+  --selection: #1e2c42;
+  --pass: #5ec98d;
+  --fail: #f0817d;
+  --warn: #f2ad63;
+  --warn-bg: #33270f;
+  --hole: #e3b25c;
+  --hole-bg: #3b2e14;
+  --evidence: #ff9c58;
+  --trace: #b39afc;
+  --deadlock: #f09454;
+  --tok-quantifier: #e585c0;
+  --tok-temporal: #7cb5f0;
+  --tok-prop: #5ec98d;
+  --tok-connective: #9aa6b5;
+
+  /* elevation — heavier on dark */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.6);
 }
 
 /* ------------------------------------------------------------------------- */

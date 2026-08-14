@@ -27,7 +27,18 @@ const SCALE_TOKENS = [
   '--radius-1', '--radius-2',
   '--shadow-1', '--shadow-2',
 ];
-const ALL_TOKENS = [...SURFACE_TOKENS, ...SEMANTIC_TOKENS, ...SCALE_TOKENS];
+// Companion color tokens Task 1 added beyond the spec list.
+const COMPANION_TOKENS = [
+  '--text-faint', '--hover', '--on-accent', '--warn-bg', '--hole-bg',
+];
+const ALL_TOKENS = [...SURFACE_TOKENS, ...SEMANTIC_TOKENS, ...SCALE_TOKENS, ...COMPANION_TOKENS];
+
+// Every color-carrying token must get a dark value (dimension tokens —
+// space/fs/radius — are theme-independent; shadows/backdrop are not).
+const DARK_REQUIRED_TOKENS = [
+  ...SURFACE_TOKENS, ...SEMANTIC_TOKENS, ...COMPANION_TOKENS,
+  '--shadow-1', '--shadow-2',
+];
 
 const DARK_SELECTOR = ":root[data-theme='dark']";
 
@@ -58,9 +69,20 @@ describe('design token foundation (styles.css)', () => {
     expect(missing, `tokens missing from :root block: ${missing.join(', ')}`).toEqual([]);
   });
 
-  it("has a :root[data-theme='dark'] block (empty is fine until Task 2)", () => {
+  it("has a :root[data-theme='dark'] block overriding every color token", () => {
     expect(css.includes(DARK_SELECTOR), `styles.css must contain \`${DARK_SELECTOR}\``).toBe(true);
-    expect(extractBlock(css, DARK_SELECTOR)).not.toBeNull();
+    const dark = extractBlock(css, DARK_SELECTOR);
+    expect(dark).not.toBeNull();
+    const missing = DARK_REQUIRED_TOKENS.filter(
+      (t) => !new RegExp(`${t}\\s*:`).test(dark!.body),
+    );
+    expect(missing, `tokens missing from dark block: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('dark block uses no pure #000/#fff surfaces or text', () => {
+    const dark = extractBlock(css, DARK_SELECTOR)!;
+    const pure = dark.body.match(/#(?:000|fff|000000|ffffff)\b/gi) ?? [];
+    expect(pure, `pure black/white in dark block: ${pure.join(', ')}`).toEqual([]);
   });
 
   it('names no raw colors outside the two token blocks', () => {

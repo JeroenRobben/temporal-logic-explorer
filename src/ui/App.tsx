@@ -30,6 +30,7 @@ import Inspector from './Inspector';
 import LearnPanel from './LearnPanel';
 import Timeline from './Timeline';
 import TreeView, { TreeEvidence } from './TreeView';
+import { applyTheme, detachThemeListener, loadPref } from './theme';
 
 let idCounter = 0;
 function freshId(prefix: string): string {
@@ -71,6 +72,13 @@ export default function App() {
   const pendingTab = useRef<'model' | 'tree' | 'automaton' | 'product' | null>(null);
   const treeAvailable = model.states.some((s) => s.isInitial);
   const layoutAnim = useRef<number | null>(null);
+
+  // Theme: apply stored pref (default auto) at mount; detach the system
+  // matchMedia listener on unmount.
+  useEffect(() => {
+    applyTheme(loadPref());
+    return detachThemeListener;
+  }, []);
 
   useEffect(() => {
     setViewTab(pendingTab.current ?? 'model');

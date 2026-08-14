@@ -14,6 +14,9 @@ import { checkCTLStar, findStarEvidence, CTLStarResult } from '../core/ctlstar-c
 import { AutomatonTooLarge } from '../core/buchi';
 import { CTLNode } from '../core/ctl-parser';
 import { Analysis, FormulaEntry, Logic, PendingLasso, Selection } from './types';
+import { TUTORIALS } from '../learn/content';
+import { findNodeByPretty, prettyOfNode } from '../learn/engine';
+import { StepSetup, LearnView } from '../learn/types';
 import { colorForNode } from './colors';
 import { wrapNode, swapQuantifier } from './formulaEdits';
 import { loadSaved, save, SavedState } from './storage';
@@ -24,6 +27,7 @@ import FormulaPanel from './FormulaPanel';
 import Canvas, { Highlight } from './Canvas';
 import GraphView, { RenderGraph } from './GraphView';
 import Inspector from './Inspector';
+import LearnPanel from './LearnPanel';
 import Timeline from './Timeline';
 import TreeView, { TreeEvidence } from './TreeView';
 
@@ -57,12 +61,29 @@ export default function App() {
   const [graphHover, setGraphHover] = useState<string | null>(null);
   const [treeHover, setTreeHover] = useState<string | null>(null);
   const [gestureNotice, setGestureNotice] = useState<string | null>(null);
+  const [rightTab, setRightTab] = useState<'inspect' | 'learn'>('inspect');
+  const [learnRefId, setLearnRefId] = useState<string | null>(null);
+  const [tutorial, setTutorial] = useState<{ id: string; step: number } | null>(null);
+  const learnStash = useRef<(SavedState & { activeFormulaId: string | null }) | null>(null);
+  // A tutorial step setup that changes the active formula AND the view tab
+  // would be clobbered by the tab-reset effect below; the setup parks the tab
+  // here and the effect consumes it instead of hard-resetting to 'model'.
+  const pendingTab = useRef<'model' | 'tree' | 'automaton' | 'product' | null>(null);
   const treeAvailable = model.states.some((s) => s.isInitial);
   const layoutAnim = useRef<number | null>(null);
 
-  useEffect(() => { setViewTab('model'); setGraphHover(null); }, [activeFormulaId]);
+  useEffect(() => {
+    setViewTab(pendingTab.current ?? 'model');
+    pendingTab.current = null;
+    setGraphHover(null);
+  }, [activeFormulaId]);
 
-  useEffect(() => { save({ model, formulas, trace }); }, [model, formulas, trace]);
+  // Persistence pauses during a tutorial: the sandbox must never overwrite the
+  // stored pre-tutorial workspace (the stash lives only in a ref, so a refresh
+  // mid-tutorial reloads the last saved pre-tutorial state).
+  useEffect(() => {
+    if (tutorial === null) save({ model, formulas, trace });
+  }, [model, formulas, trace, tutorial]);
 
   function handleTraceClick(id: string) {
     setTraceNotice(null);
@@ -478,6 +499,131 @@ export default function App() {
     setShowEvidence(false);
   }
 
+  // Applies a tutorial step's setup to the live app. Called from event
+  // handlers, so `formulas` in scope may be stale after setFormulas — the new
+  // list is threaded through `fs` locally to avoid that race.
+  function applyLearnSetup(s: StepSetup) {
+    cancelLayoutAnim();
+    if (s.model) history.commit(structuredClone(s.model));
+    let fs = formulas;
+    if (s.formulas) {
+      fs = s.formulas.map((f) => ({ id: freshId('lf'), text: f.text, logic: f.logic }));
+      setFormulas(fs);
+      setActiveFormulaId(null); setSelectedNodeId(null); setStepIndex(null);
+    }
+    if (s.activeFormulaIndex !== undefined) {
+      const target = fs[s.activeFormulaIndex];
+      if (target) {
+        setSelection({ kind: 'formula', id: target.id });
+        setActiveFormulaId(target.id); setSelectedNodeId(null); setStepIndex(null);
+      }
+    }
+    if (s.selectSubformulaPretty !== undefined) {
+      const idx = s.activeFormulaIndex ?? fs.findIndex((f) => f.id === activeFormulaId);
+      const f = fs[idx];
+      if (f) setSelectedNodeId(findNodeByPretty(f.logic, f.text, s.selectSubformulaPretty));
+    }
+    if (s.viewTab) {
+      if (s.activeFormulaIndex !== undefined) pendingTab.current = s.viewTab; // tab-reset effect applies it
+      else setViewTab(s.viewTab);
+    }
+    if (s.trace !== undefined) { setRecording(false); setTrace(s.trace); }
+    if (s.showEvidence !== undefined) setShowEvidence(s.showEvidence);
+  }
+
+  function openLearnRef(id: string) {
+    setLearnRefId(id);
+    setRightTab('learn');
+  }
+
+  function startTutorial(id: string) {
+    const def = TUTORIALS.find((t) => t.id === id);
+    if (!def) return;
+    learnStash.current = { model: structuredClone(model), formulas, trace, activeFormulaId };
+    setTutorial({ id, step: 0 });
+    setRightTab('learn');
+    applyLearnSetup(def.steps[0].setup ?? {});
+  }
+
+  function advanceTutorial(delta: 1 | -1) {
+    if (!tutorial) return;
+    const def = TUTORIALS.find((t) => t.id === tutorial.id)!;
+    const next = tutorial.step + delta;
+    if (next >= def.steps.length) { exitTutorial(); return; }   // Finish
+    if (next < 0) return;
+    setTutorial({ ...tutorial, step: next });
+    if (delta === 1) applyLearnSetup(def.steps[next].setup ?? {}); // Back re-explains, never re-mutates
+  }
+
+  function exitTutorial() {
+    const s = learnStash.current;
+    learnStash.current = null;
+    setTutorial(null);
+    if (s) {
+      // Restore WITHOUT resetting history (unlike loadState): undo stays
+      // coherent — restored state → tutorial mutations → … → pre-tutorial edits.
+      commitModel(s.model);
+      setFormulas(s.formulas);
+      setTrace(s.trace ?? null);
+      setRecording(false);
+      setSelection(null);
+      setActiveFormulaId(null);
+      setSelectedNodeId(null);
+      setStepIndex(null);
+      setShowEvidence(false);
+      if (s.activeFormulaId) {
+        setActiveFormulaId(s.activeFormulaId);
+        setSelection({ kind: 'formula', id: s.activeFormulaId });
+      }
+    }
+  }
+
+  function showMe() {
+    if (!tutorial) return;
+    const def = TUTORIALS.find((t) => t.id === tutorial.id)!;
+    const sol = def.steps[tutorial.step].solution;
+    if (sol) applyLearnSetup(sol); // auto-advance effect then fires
+  }
+
+  const learnView: LearnView = useMemo(() => {
+    const idx = formulas.findIndex((f) => f.id === activeFormulaId);
+    const active = idx >= 0 ? formulas[idx] : null;
+    return {
+      model,
+      formulas: analyses.map((a) => ({ text: a.entry.text, logic: a.entry.logic, verdict: a.verdict })),
+      activeFormulaIndex: idx,
+      selectedSubformulaPretty: active && selectedNodeId !== null
+        ? prettyOfNode(active.logic, active.text, selectedNodeId) : null,
+      viewTab, hasTrace: trace !== null && trace.stateIds.length > 0, showEvidence,
+    };
+  }, [model, analyses, formulas, activeFormulaId, selectedNodeId, viewTab, trace, showEvidence]);
+
+  // Auto-advance: when the current task step's checkpoint holds over the live
+  // app state, pause for a brief ✓ beat, then move on.
+  useEffect(() => {
+    if (!tutorial) return;
+    const def = TUTORIALS.find((t) => t.id === tutorial.id);
+    const step = def?.steps[tutorial.step];
+    if (step?.checkpoint && step.checkpoint(learnView)) {
+      const t = window.setTimeout(() => advanceTutorial(1), 600);
+      return () => window.clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [learnView, tutorial]);
+
+  // Highlight ring on the current step's data-learn anchor (anchors land in Task 6).
+  // rightTab is a dep because the anchors live inside the Inspector, which is
+  // unmounted while the Learn tab shows — switching panes must (re)apply the ring.
+  useEffect(() => {
+    document.querySelectorAll('.learn-ring').forEach((el) => el.classList.remove('learn-ring'));
+    if (tutorial === null) return;
+    const def = TUTORIALS.find((t) => t.id === tutorial.id);
+    const hl = def?.steps[tutorial.step]?.highlight;
+    if (hl) document.querySelector(`[data-learn="${hl}"]`)?.classList.add('learn-ring');
+  }, [tutorial, rightTab]);
+
+  const tutorialDef = tutorial ? TUTORIALS.find((t) => t.id === tutorial.id) ?? null : null;
+
   function autoLayout() {
     if (model.states.length < 2) return;
     cancelLayoutAnim();
@@ -568,6 +714,7 @@ export default function App() {
             model={model}
             onUpdate={updateFormula}
             onSwitchLogic={setEntryLogic}
+            onOpenLearn={openLearnRef}
             onRemove={(id) => {
               setFormulas((f) => f.filter((x) => x.id !== id));
               if (selectedFormulaId === id) setSelection(null);
@@ -582,6 +729,12 @@ export default function App() {
         </div>
         <div className="pane center" onMouseLeave={() => setHoverStateId(null)}>
           <div className="center-stack">
+            {tutorial && tutorialDef && (
+              <div className="tutorial-banner">
+                Tutorial: {tutorialDef.title} — step {tutorial.step + 1}/{tutorialDef.steps.length}
+                <button className="linkish" onClick={exitTutorial}>Exit</button>
+              </div>
+            )}
             {(graphable || treeAvailable) && (
               <div className="view-tabs">
                 <button className={`tab ${viewTab === 'model' ? 'active' : ''}`}
@@ -650,6 +803,21 @@ export default function App() {
           </div>
         </div>
         <div className="pane right">
+          <div className="view-tabs right-tabs">
+            <button className={`tab ${rightTab === 'inspect' ? 'active' : ''}`}
+              onClick={() => setRightTab('inspect')}>Inspector</button>
+            <button className={`tab ${rightTab === 'learn' ? 'active' : ''}`}
+              onClick={() => setRightTab('learn')}>
+              Learn{tutorial && <span className="learn-dot">●</span>}
+            </button>
+          </div>
+          {rightTab === 'learn' ? (
+            <LearnPanel refId={learnRefId}
+              tutorial={tutorial && tutorialDef ? { def: tutorialDef, step: tutorial.step } : null}
+              view={learnView}
+              onOpenRef={setLearnRefId} onStartTutorial={startTutorial} onExitTutorial={exitTutorial}
+              onNext={() => advanceTutorial(1)} onBack={() => advanceTutorial(-1)} onShowMe={showMe} />
+          ) : (
           <Inspector
             model={model}
             onChange={commitModel}
@@ -668,7 +836,9 @@ export default function App() {
             starEvidence={starEvidence}
             onFormulaEdit={applyFormulaEdit}
             gestureNotice={gestureNotice}
+            onOpenLearn={openLearnRef}
           />
+          )}
         </div>
       </div>
       {(trace !== null || activeLTLAnalysis !== null || traceNotice !== null) && (

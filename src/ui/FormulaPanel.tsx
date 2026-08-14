@@ -16,10 +16,11 @@ interface FormulaPanelProps {
   model: KripkeStructure;
   onUpdate: (id: string, text: string) => void;
   onSwitchLogic: (l: Logic) => void;
+  onOpenLearn: (id: string) => void;
 }
 
 export default function FormulaPanel({
-  analyses, selectedFormulaId, onSelect, onAdd, onRemove, entryLogic, model, onUpdate, onSwitchLogic,
+  analyses, selectedFormulaId, onSelect, onAdd, onRemove, entryLogic, model, onUpdate, onSwitchLogic, onOpenLearn,
 }: FormulaPanelProps) {
   const [editing, setEditing] = useState<{ id: string; text: string; logic: Logic } | null>(null);
 
@@ -35,6 +36,7 @@ export default function FormulaPanel({
         }}
         onCancelEdit={() => setEditing(null)}
         onSwitchLogic={onSwitchLogic}
+        onOpenLearn={onOpenLearn}
       />
       <div style={{ marginTop: 8 }}>
         {analyses.map((a) => {

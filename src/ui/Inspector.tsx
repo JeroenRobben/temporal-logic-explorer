@@ -7,6 +7,7 @@ import { Analysis, Logic, Selection } from './types';
 import { colorForNode } from './colors';
 import { Evidence } from '../core/evidence';
 import { Lasso } from '../core/trace';
+import { refIdForNode } from '../learn/content';
 
 export interface InspectorProps {
   model: KripkeStructure;
@@ -26,6 +27,7 @@ export interface InspectorProps {
   starEvidence: { lasso: Lasso; kind: 'witness' | 'counterexample' } | null;
   onFormulaEdit: (action: { type: 'wrap'; wrapper: string } | { type: 'swap' }) => void;
   gestureNotice: string | null;
+  onOpenLearn: (id: string) => void;
 }
 
 export const RESERVED_NAMES = ['true', 'false', 'A', 'E', 'U', 'X', 'F', 'G', 'AX', 'EX', 'AF', 'EF', 'AG', 'EG', 'AU', 'EU'];
@@ -195,9 +197,11 @@ function GestureRow(props: {
   nodeKind: string | null;
   onFormulaEdit: (a: { type: 'wrap'; wrapper: string } | { type: 'swap' }) => void;
   notice: string | null;
+  onOpenLearn: (id: string) => void;
 }) {
-  const { logic, nodeKind, onFormulaEdit, notice } = props;
+  const { logic, nodeKind, onFormulaEdit, notice, onOpenLearn } = props;
   if (nodeKind === null) return null;
+  const refId = refIdForNode(logic, nodeKind);
   const wraps = logic === 'ctl'
     ? ['AG', 'EF', 'AF', 'EG', 'AX', 'EX']
     : logic === 'ltl'
@@ -215,6 +219,9 @@ function GestureRow(props: {
         {swappable && (
           <button className="op-btn" title="swap A↔E" onClick={() => onFormulaEdit({ type: 'swap' })}>A↔E</button>
         )}
+        {refId && (
+          <button className="learn-q" onClick={() => onOpenLearn(refId)}>? what is this</button>
+        )}
       </div>
       {notice && <div className="hint">{notice}</div>}
     </>
@@ -227,7 +234,7 @@ export default function Inspector(props: InspectorProps) {
     selectedNodeId, onSelectNode, stepIndex, onStepIndex,
     showEvidence, onShowEvidence, evidence, onDeleteTransition,
     onLoadCounterexample, graphDetail, starEvidence,
-    onFormulaEdit, gestureNotice,
+    onFormulaEdit, gestureNotice, onOpenLearn,
   } = props;
   const [newProp, setNewProp] = useState('');
 
@@ -331,11 +338,13 @@ export default function Inspector(props: InspectorProps) {
       return (
         <div>
           <div className="section-title">Subformulas — rows in the timeline</div>
-          <LTLNodeTree node={ltlAst} depth={0} selectedNodeId={selectedNodeId}
-            onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          <div data-learn="inspector-tree">
+            <LTLNodeTree node={ltlAst} depth={0} selectedNodeId={selectedNodeId}
+              onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          </div>
           {selectedNodeId !== null && (
             <GestureRow logic="ltl" nodeKind={selectedLTLNode?.kind ?? null}
-              onFormulaEdit={onFormulaEdit} notice={gestureNotice} />
+              onFormulaEdit={onFormulaEdit} notice={gestureNotice} onOpenLearn={onOpenLearn} />
           )}
           {selectedLTLNode && <div className="gloss">{GLOSS[selectedLTLNode.kind]}</div>}
           <div className="section-title">Verdict (trace position 0)</div>
@@ -405,11 +414,13 @@ export default function Inspector(props: InspectorProps) {
       return (
         <div>
           <div className="section-title">Subformulas — state formulas color the canvas</div>
-          <StarNodeTree node={starAst} depth={0} cls={starCls} selectedNodeId={selectedNodeId}
-            onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          <div data-learn="inspector-tree">
+            <StarNodeTree node={starAst} depth={0} cls={starCls} selectedNodeId={selectedNodeId}
+              onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+          </div>
           {selectedNodeId !== null && (
             <GestureRow logic="ctlstar" nodeKind={selectedStar?.kind ?? null}
-              onFormulaEdit={onFormulaEdit} notice={gestureNotice} />
+              onFormulaEdit={onFormulaEdit} notice={gestureNotice} onOpenLearn={onOpenLearn} />
           )}
           {selectedStar && (
             <div className="gloss">
@@ -493,11 +504,13 @@ export default function Inspector(props: InspectorProps) {
     return (
       <div>
         <div className="section-title">Subformulas — click to color states</div>
-        <NodeTree node={ast} depth={0} selectedNodeId={selectedNodeId}
-          onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+        <div data-learn="inspector-tree">
+          <NodeTree node={ast} depth={0} selectedNodeId={selectedNodeId}
+            onSelectNode={(id) => onSelectNode(id === selectedNodeId ? null : id)} />
+        </div>
         {selectedNodeId !== null && (
           <GestureRow logic="ctl" nodeKind={selectedNode?.kind ?? null}
-            onFormulaEdit={onFormulaEdit} notice={gestureNotice} />
+            onFormulaEdit={onFormulaEdit} notice={gestureNotice} onOpenLearn={onOpenLearn} />
         )}
         {selectedNode && <div className="gloss">{GLOSS[selectedNode.kind]}</div>}
         {selectedResult && iterCount > 1 && (
@@ -526,7 +539,7 @@ export default function Inspector(props: InspectorProps) {
           </div>
         ))}
         <div className="section-title">Evidence</div>
-        <label>
+        <label data-learn="inspector-evidence">
           <input type="checkbox" checked={showEvidence}
             onChange={(e) => onShowEvidence(e.target.checked)} /> show witness / counterexample
         </label>

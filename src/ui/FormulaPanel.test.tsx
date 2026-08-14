@@ -28,6 +28,7 @@ function renderPanel(analyses: Analysis[]) {
       model={emptyModel}
       onUpdate={noop}
       onSwitchLogic={noop}
+      onOpenLearn={noop}
     />,
   );
 }

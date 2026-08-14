@@ -19,6 +19,7 @@ export const BOOL_REFS: ReferenceDoc[] = [
       'Negation flips the answer at one state — it says nothing about other states or about paths; ¬F φ on a path is G ¬φ, not F ¬φ.',
     ],
     bookRef: 'MCS §5.2.1/§9.1',
+    tutorialId: 'tut-booleans',
   },
   {
     id: 'bool-and',
@@ -36,6 +37,7 @@ export const BOOL_REFS: ReferenceDoc[] = [
       'Both conjuncts are checked at the same state — p ∧ q never means "p here and q somewhere else"; reaching for that needs a temporal operator.',
     ],
     bookRef: 'MCS §5.2.1/§9.1',
+    tutorialId: 'tut-booleans',
   },
   {
     id: 'bool-or',
@@ -53,6 +55,7 @@ export const BOOL_REFS: ReferenceDoc[] = [
       'Disjunction is inclusive: a state satisfying both φ and ψ satisfies φ ∨ ψ — there is no exclusive-or connective in this tool.',
     ],
     bookRef: 'MCS §5.2.1/§9.1',
+    tutorialId: 'tut-booleans',
   },
   {
     id: 'bool-implies',
@@ -71,6 +74,7 @@ export const BOOL_REFS: ReferenceDoc[] = [
       'Implication is not causation or sequence: φ → ψ compares the two at the same state; "φ then later ψ" needs a temporal operator (e.g. G (φ → F ψ)).',
     ],
     bookRef: 'MCS §5.2.1/§9.1',
+    tutorialId: 'tut-booleans',
   },
   {
     id: 'bool-iff',
@@ -88,6 +92,7 @@ export const BOOL_REFS: ReferenceDoc[] = [
       'State-by-state agreement is weaker than equivalence of formulas: p ↔ q can hold at some states and fail at others; φ ≡ ψ means they agree at every state of every model.',
     ],
     bookRef: 'MCS §5.2.1/§9.1',
+    tutorialId: 'tut-booleans',
   },
 ];
 

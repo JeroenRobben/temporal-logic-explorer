@@ -23,6 +23,48 @@ describe('reference docs', () => {
   });
 });
 
+describe('map completeness', () => {
+  // Fixture copies of the palette() label lists in src/ui/Composer.tsx —
+  // KEEP IN SYNC with that function when palette buttons change. The UI-level
+  // twin (learn-links.test.tsx) asserts every rendered button gets a mapped ?;
+  // this data-level check pins the exact label inventory per logic.
+  const BOOL_LABELS = ['∧', '∨', '¬', '→', '↔'];
+  const PALETTE_LABELS: Record<string, string[]> = {
+    ctl: ['AG', 'EF', 'AF', 'EG', 'AX', 'EX', 'A[▢U▢]', 'E[▢U▢]', ...BOOL_LABELS],
+    ltl: ['G', 'F', 'X', '▢U▢', ...BOOL_LABELS],
+    ctlstar: ['A', 'E', 'G', 'F', 'X', '▢U▢', ...BOOL_LABELS],
+  };
+
+  for (const [logic, labels] of Object.entries(PALETTE_LABELS)) {
+    it(`every ${logic} palette label maps to a resolvable reference`, () => {
+      for (const label of labels) {
+        const refId = REF_BY_PALETTE[label];
+        expect(refId, `palette label ${label} (${logic}) missing from REF_BY_PALETTE`).toBeTruthy();
+        expect(referenceById(refId), `REF_BY_PALETTE[${label}] → ${refId} does not resolve`).toBeTruthy();
+      }
+    });
+  }
+
+  it('every ReferenceDoc tutorialId resolves to an existing tutorial', () => {
+    const tutIds = new Set(TUTORIALS.map((t) => t.id));
+    for (const r of REFERENCES) {
+      if (r.tutorialId) expect(tutIds.has(r.tutorialId), `${r.id} → ${r.tutorialId} dangling`).toBe(true);
+    }
+  });
+
+  it('every tutorial is reachable from exactly one doc (tut-booleans: shared, ≥1)', () => {
+    const refCount = new Map<string, number>();
+    for (const r of REFERENCES) {
+      if (r.tutorialId) refCount.set(r.tutorialId, (refCount.get(r.tutorialId) ?? 0) + 1);
+    }
+    for (const t of TUTORIALS) {
+      const n = refCount.get(t.id) ?? 0;
+      if (t.id === 'tut-booleans') expect(n, 'tut-booleans must be reachable from the boolean docs').toBeGreaterThanOrEqual(1);
+      else expect(n, `${t.id} must be referenced by exactly one ReferenceDoc`).toBe(1);
+    }
+  });
+});
+
 describe('tutorial replay', () => {
   for (const t of TUTORIALS) {
     it(`${t.id}: models valid, formulas parse, checkpoints gated and solvable`, () => {

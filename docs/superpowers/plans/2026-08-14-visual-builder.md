@@ -18,13 +18,13 @@
 
 **Files:** Create `src/builder/htree.ts`; Test `src/builder/htree.test.ts`.
 
-- [ ] **Step 1: Failing tests** for: `nodeAt/replaceAt/wrapAt/deleteAt` on nested trees (root ops included; invalid paths no-op returning the SAME tree reference), `holes()` path enumeration in left-to-right order, `isComplete`, and `toText` cases per logic pinned exactly:
+- [x] **Step 1: Failing tests** for: `nodeAt/replaceAt/wrapAt/deleteAt` on nested trees (root ops included; invalid paths no-op returning the SAME tree reference), `holes()` path enumeration in left-to-right order, `isComplete`, and `toText` cases per logic pinned exactly:
   - CTL: `{op:'AU',children:[hole,prop p]}` → `A[▢ U p]`; `{op:'AG',children:[{op:'implies',children:[prop p, {op:'EF',children:[prop q]}]}]}` → `AG (p -> EF q)`; `not` → `! p`; consts → `true`/`false`.
   - LTL: `(p U ▢)`, `G (p -> F q)` shapes.
   - CTL*: `A (G (F p))` — quantifiers print `A (…)`/`E (…)`.
-- [ ] **Step 2: Run — FAIL.** `npm test -- src/builder`
-- [ ] **Step 3: Implement.** Types per spec. Per-op syntax table `{arity, print(childTexts): string}` per logic-family: booleans `! x` / `(x & y)` / `(x | y)` / `(x -> y)` / `(x <-> y)`; LTL/CTL* temporals `X x`/`F x`/`G x`/`(x U y)`; CTL pairs `AX x`…`AG x`, `A[x U y]`, `E[x U y]`; CTL* quantifiers `A (x)`/`E (x)`. Parenthesize binary ops always (snippet-template style); unary operands parenthesized when the child is an `op` other than another unary chain — simplest correct rule: wrap any non-leaf child of a unary op in parens (`AG (p -> q)`, `AG p`, `! (p & q)`, `! p`, `G (F p)` is fine as `G F p` or `G (F p)` — pick always-parens for non-leaf, it must merely reparse correctly, not be minimal).
-- [ ] **Step 4: PASS + full suite.** **Step 5: Commit** `feat(builder): hole-tolerant formula tree with toText`.
+- [x] **Step 2: Run — FAIL.** `npm test -- src/builder`
+- [x] **Step 3: Implement.** Types per spec. Per-op syntax table `{arity, print(childTexts): string}` per logic-family: booleans `! x` / `(x & y)` / `(x | y)` / `(x -> y)` / `(x <-> y)`; LTL/CTL* temporals `X x`/`F x`/`G x`/`(x U y)`; CTL pairs `AX x`…`AG x`, `A[x U y]`, `E[x U y]`; CTL* quantifiers `A (x)`/`E (x)`. Parenthesize binary ops always (snippet-template style); unary operands parenthesized when the child is an `op` other than another unary chain — simplest correct rule: wrap any non-leaf child of a unary op in parens (`AG (p -> q)`, `AG p`, `! (p & q)`, `! p`, `G (F p)` is fine as `G F p` or `G (F p)` — pick always-parens for non-leaf, it must merely reparse correctly, not be minimal).
+- [x] **Step 4: PASS + full suite.** **Step 5: Commit** `feat(builder): hole-tolerant formula tree with toText`.
 
 ### Task 2: fromAst + round-trip properties
 

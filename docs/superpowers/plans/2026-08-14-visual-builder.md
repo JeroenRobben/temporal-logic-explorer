@@ -53,4 +53,4 @@
 
 ### Task 5: Finish
 
-- [ ] Full `npm test` + `npx tsc --noEmit` clean; report final counts. Commit stragglers if any.
+- [x] Full `npm test` + `npx tsc --noEmit` clean; report final counts. Commit stragglers if any.
